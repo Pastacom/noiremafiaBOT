@@ -3,13 +3,11 @@ import discord
 from discord.ext import commands
 import asyncio
 import random
-import logging
 
 prefix = "!"
 client = commands.Bot(command_prefix=prefix)
 client.remove_command("help")
 
-logging.basicConfig(level=logging.INFO)
 
 @client.command()
 async def mute(ctx):
