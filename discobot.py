@@ -12,12 +12,12 @@ client.remove_command("help")
 @client.command()
 async def mute(ctx):
     await ctx.channel.purge(limit=1)
-    await ctx.author.edit(mute=True,deafen=True)
+    await ctx.author.edit(mute=True)
 
 @client.command()
 async def unmute(ctx):
     await ctx.channel.purge(limit=1)
-    await ctx.author.edit(mute=False,deafen=False)
+    await ctx.author.edit(mute=False)
 
 
 
