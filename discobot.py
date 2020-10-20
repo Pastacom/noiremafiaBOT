@@ -53,7 +53,6 @@ async def on_message(mess):
             await mess.channel.send('Ночью были убиты игроки под номерами: '+ (', ').join(killed))
             #for person in killed:
                 #available[int(person)-1] = 0
-                #members[int(person)-1].edit(mute=True)
             global voted
             global votes
             voted=[]
@@ -157,11 +156,10 @@ async def unmute(ctx):
 
 @client.command()
 async def test(ctx):
-    await co(ctx)
-    '''print(ctx.author.permissions_in(ctx.channel).send_messages)
+    print(ctx.author.permissions_in(ctx.channel).send_messages)
     print(ctx.channel)
     await ctx.channel.set_permissions(ctx.author,send_messages=False)
-    print(ctx.author.permissions_in(ctx.channel).send_messages)'''
+    print(ctx.author.permissions_in(ctx.channel).send_messages)
 
 @client.command()
 async def vote(ctx,choice):
@@ -195,11 +193,14 @@ async def vote(ctx,choice):
 
 @client.command()
 async def start(ctx):
-    try:
-        members[0]
-        await ctx.send('Игра началась!')
-    except:
-        await ctx.send('Необходимо сначала задать список ролей для игры.')
+    if mode == 'non-auto':
+        await ctx.send('Эта команда доступна только для режима без ведущего.')
+    else:
+        try:
+            members[0]
+            await ctx.send('Игра началась!')
+        except:
+            await ctx.send('Необходимо сначала задать список ролей для игры.')
 
 async def add_role(num, ctx):
     def check(m):
@@ -227,7 +228,7 @@ guilty={}
 killed=['-']
 vote_choice = ''
 mode = 'non-auto'
-right=None
+right = None
 roles_num = {}
 player_roles = {}
 
