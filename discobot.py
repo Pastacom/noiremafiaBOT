@@ -123,6 +123,7 @@ async def on_message(mess):
             await mess.channel.send('Начинается обсуждение и выставление кандидатур на голосование.')
             global voted
             global votes
+            global right_to_vote
             voted=[]
             votes = [0 for i in range(len(members))]#колличественные голоса за игроков
             killed.clear()
@@ -133,11 +134,13 @@ async def on_message(mess):
                     vote_choice = ''
                     member = members[i]
                     right = member
+                    right_to_vote=member
                     await timer(time,mess,member,0)
                     if vote_choice == '':
                         pass
                     elif vote_choice-1 not in voted:
                         voted.append(vote_choice-1)
+            right_to_vote=None
             if len(voted)==0:
                 await mess.channel.send('Было принято решение никого не сажать в тюрьму.')
             else:
@@ -171,6 +174,11 @@ async def on_message(mess):
         if mess.content == 'Голосование окончено':
             if votes.count(max(votes)) == 1:
                 guil=votes.index(max(votes))
+                vn=0
+                right=members[guil]
+                checker=0
+                await mess.channel.send('Приговоренному дается право произнести последнюю речь.')
+                await timer(time,mess,members[guil],0)
                 available[guil]=0
                 await members[guil].edit(nick=str(guil+1) + '. ' + str(members[guil])[:-5] + ' ☠',mute=True)
                 await mess.channel.send(str(members[guil])[:-5] + ' был посажен за решетку!')
@@ -203,8 +211,13 @@ async def on_message(mess):
                     if available[i] == 1 and already[i] == 0:
                         guilty[list(guilty.keys())[-1]] += 1
                 if list(guilty.values()).count(max(guilty.values())) == 1:
+                    vn=0
                     for i in range(len(guilty)):
                         if guilty[i] == max(guilty.values()):
+                            checker=0
+                            right=members[list(guilty.keys())[i]]
+                            await mess.channel.send('Приговоренному дается право произнести последнюю речь.')
+                            await timer(time, mess, members[list(guilty.keys())[i]], 0)
                             available[i] = 0
                             try:
                                 await members[i].edit(nick=str(i + 1) + '. ' + str(members[i])[:-5] + ' ☠',mute=True)
@@ -228,7 +241,12 @@ async def on_message(mess):
                         if available[i]==1 and already[i]==0:
                             count-=1
                     if count>0:
+                        await mess.channel.send('Приговоренным дается право произнести последнюю речь.')
+                        vn=0
                         for i in list(guilty.keys()):
+                            checker=0
+                            right=members[list(guilty.keys())[i]]
+                            await timer(time, mess, members[list(guilty.keys())[i]], 0)
                             available[i] = 0
                             await members[i].edit(nick=str(i + 1) + '. ' + str(members[i])[:-5] + ' ☠', mute=True)
                             await mess.channel.send(str(members[i])[:-5] + ' был посажен за решетку!')
@@ -240,13 +258,10 @@ async def on_message(mess):
 async def unmute(ctx):
     await ctx.author.edit(mute=False)
 
-#@client.command()
-#async def test(ctx):
-
 @client.command()
 async def vote(ctx,choice):
     try:
-        if ctx.author.id == right.id:
+        if ctx.author.id == right_to_vote.id:
             global vote_choice
             try:
                 choice = int(choice)
