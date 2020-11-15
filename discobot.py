@@ -9,7 +9,55 @@ prefix = "!"
 client = commands.Bot(command_prefix=prefix)
 client.remove_command("help")
 
+roles_num_b = {'1':0,'2':0,'3':0,'4':0,'5':0,'6':0,'7':0,'8':0,'9':0,'10':0,'11':0,'12':0,'13':0,'14':0}
+players = 0
+tumb=0
+time = 10
+voted=[]
+votes=[]
+already=[]
+available=[]
+guilty={}
+checker=0
+killed=['-']
+vote_choice = ''
+mode = 'non-auto'
+right = None
+roles_num = {}
+player_roles = {}
 
+#------------------Bot is online-------------------
+
+@client.event
+async def on_ready():
+    print("Bot is online.")
+    await client.change_presence(status= discord.Status.online)
+
+#-----------------Utility commands------------------
+
+@client.command()
+async def unmute(ctx):
+    await ctx.author.edit(mute=False)
+
+#-------------------Main body-----------------------
+
+#---------------Additional functions----------------
+
+async def add_role(num, ctx):
+    def check(m):
+        return m.author.id == ctx.author.id
+    response = await ctx.bot.wait_for('message', check=check)
+    try:
+        request = response.content
+        if int(request[-1])<=num:
+            roles_num[request[:len(request)-2]]+=int(request[-1])
+        else:
+            await ctx.send('Количество ролей превышает количество игроков. Попробуйте снова.')
+            await add_role(num, ctx)
+    except:
+        request='0'
+    if num-int(request[-1])>0:
+        await add_role(num-int(request[-1]), ctx)
 
 async def timer(time,mess,member,vt):
     if vt == 0:
@@ -87,177 +135,6 @@ async def on_reaction_add(reaction,user):
             already[members.index(user)] = 1
             count += 1
 
-
-
-@client.event
-async def on_ready():
-    print("Bot is online.")
-    await client.change_presence(status= discord.Status.online)
-
-@client.event
-async def on_message(mess):
-    if mess.author == client.user and mess.guild != None:
-        if mess.content == 'Игра началась!':#день знакомств
-            await mess.channel.send('Начинается день знакомств')
-            global already
-            already=[0 for i in range(len(members))]
-            global time
-            global tumb
-            global available
-            global right
-            global checker
-            global vn
-            vn=0
-            tumb = 0
-            available = [1 for i in range(len(members))]
-            for member in members:
-                right=member
-                checker = 0
-                await timer(time,mess,member,0)
-            await mess.channel.send('Наступает день')
-        if mess.content == 'Наступает день':#объявление убитых+выставление на голосование игроков
-            await mess.channel.send('Ночью были убиты игроки под номерами: '+ (', ').join(killed))
-            #for person in killed:
-                #available[int(person)-1] = 0
-                #await members[int(person)-1].edit(nick=str(person) + '. ' + str(members[int(person)-1])[:-5] + ' ☠', mute=True)
-            await mess.channel.send('Начинается обсуждение и выставление кандидатур на голосование.')
-            global voted
-            global votes
-            global right_to_vote
-            voted=[]
-            votes = [0 for i in range(len(members))]#колличественные голоса за игроков
-            killed.clear()
-            global vote_choice
-            for i in range(len(available)):
-                if available[i] == 1:
-                    checker = 0
-                    vote_choice = ''
-                    member = members[i]
-                    right = member
-                    right_to_vote=member
-                    await timer(time,mess,member,0)
-                    if vote_choice == '':
-                        pass
-                    elif vote_choice-1 not in voted:
-                        voted.append(vote_choice-1)
-            right_to_vote=None
-            if len(voted)==0:
-                await mess.channel.send('Было принято решение никого не сажать в тюрьму.')
-            else:
-                m=[]
-                for i in range(len(voted)):
-                    m.append(str(voted[i]+1))
-                await mess.channel.send('Обвиняются игроки под номерами: ' + (', ').join(m))
-                await mess.channel.send('Обвиняемым предоставляется оправдательная речь')
-        if mess.content == 'Обвиняемым предоставляется оправдательная речь':
-            for i in voted:
-                checker=0
-                member = members[i]
-                right = member
-                await timer(time,mess,member,0)
-            await mess.channel.send('Начинается голосование')
-        if mess.content == 'Начинается голосование':
-            tumb = 1
-            votes.append(1)
-            right = None
-            vn=1
-            for i in voted:
-                member = members[i]
-                global gl
-                gl = member
-                await timer(time,mess,member,1)
-            del votes[-1]
-            for i in range(len(already)):
-                if available[i]==1 and already[i]==0:
-                    votes[voted[-1]]+=1
-            await mess.channel.send('Голосование окончено')
-        if mess.content == 'Голосование окончено':
-            if votes.count(max(votes)) == 1:
-                guil=votes.index(max(votes))
-                vn=0
-                right=members[guil]
-                checker=0
-                await mess.channel.send('Приговоренному дается право произнести последнюю речь.')
-                await timer(time,mess,members[guil],0)
-                available[guil]=0
-                await members[guil].edit(nick=str(guil+1) + '. ' + str(members[guil])[:-5] + ' ☠',mute=True)
-                await mess.channel.send(str(members[guil])[:-5] + ' был посажен за решетку!')
-            else:
-                global guilty
-                for i in range(len(votes)):
-                    if votes[i] == max(votes):
-                        guilty[i+1] = 0
-                await mess.channel.send('Обвиняемым '+str(guilty.keys())[11:-2]+' предоставляются дополнительные оправдательные речи.')
-                guilty.clear()
-                right = None
-                vn=0
-                for i in range(len(votes)):
-                    if votes[i] == max(votes):
-                        checker=0
-                        guilty[i] = 0
-                        member = members[i]
-                        right=member
-                        await timer(time,mess,member,0)
-                await mess.channel.send('Начинается повторное голосование.')
-                right = None
-                already = [0 for i in range(len(members))]
-                for i in range(len(guilty)):
-                    vn=2
-                    member = members[list(guilty.keys())[i]]
-                    global ind
-                    ind=list(guilty.keys())[i]
-                    await timer(time, mess, member, 1)
-                for i in range(len(already)):
-                    if available[i] == 1 and already[i] == 0:
-                        guilty[list(guilty.keys())[-1]] += 1
-                if list(guilty.values()).count(max(guilty.values())) == 1:
-                    vn=0
-                    for i in range(len(guilty)):
-                        if guilty[i] == max(guilty.values()):
-                            checker=0
-                            right=members[list(guilty.keys())[i]]
-                            await mess.channel.send('Приговоренному дается право произнести последнюю речь.')
-                            await timer(time, mess, members[list(guilty.keys())[i]], 0)
-                            available[i] = 0
-                            try:
-                                await members[i].edit(nick=str(i + 1) + '. ' + str(members[i])[:-5] + ' ☠',mute=True)
-                                await mess.channel.send(str(members[i])[:-5] + ' был посажен за решетку!')
-                            except:
-                                pass
-                            break
-                else:
-                    for i in list(guilty.keys()):
-                        if guilty[i]!=max(guilty.values()):
-                            del guilty[i]
-                    await mess.channel.send('По-прежнему остались игроки с одинаковым количеством голосов, поэтому принимается решение: выгнать или оставить всех.\n✅ - выгнать, ⛔ - оставить')
-                    global count
-                    count=0
-                    vn=3
-                    right=None
-                    already = [0 for i in range(len(members))]
-                    checker=0
-                    await timer(time,mess,member,2)
-                    for i in range(len(already)):
-                        if available[i]==1 and already[i]==0:
-                            count-=1
-                    if count>0:
-                        await mess.channel.send('Приговоренным дается право произнести последнюю речь.')
-                        vn=0
-                        for i in list(guilty.keys()):
-                            checker=0
-                            right=members[list(guilty.keys())[i]]
-                            await timer(time, mess, members[list(guilty.keys())[i]], 0)
-                            available[i] = 0
-                            await members[i].edit(nick=str(i + 1) + '. ' + str(members[i])[:-5] + ' ☠', mute=True)
-                            await mess.channel.send(str(members[i])[:-5] + ' был посажен за решетку!')
-                    else:
-                        await mess.channel.send('Было принято решение никого не сажать в тюрьму.')
-    await client.process_commands(mess)
-
-@client.command()
-async def unmute(ctx):
-    await ctx.author.edit(mute=False)
-
 @client.command()
 async def vote(ctx,choice):
     try:
@@ -284,55 +161,7 @@ async def vote(ctx,choice):
     except:
         pass
 
-@client.command()
-async def start(ctx):
-    if mode == 'non-auto':
-        await ctx.send('Эта команда доступна только для режима без ведущего.')
-    else:
-        try:
-            for i in range(len(members)):
-                try:
-                    await members[i].edit(nick=(str(i+1)+'. '+str(members[i])[:-5]))
-                except:
-                    pass
-            members[0]
-            await ctx.send('Игра началась!')
-        except:
-            await ctx.send('Необходимо сначала задать список ролей для игры.')
-
-async def add_role(num, ctx):
-    def check(m):
-        return m.author.id == ctx.author.id
-    response = await ctx.bot.wait_for('message', check=check)
-    try:
-        request = response.content
-        if int(request[-1])<=num:
-            roles_num[request[:len(request)-2]]+=int(request[-1])
-        else:
-            await ctx.send('Количество ролей превышает количество игроков. Попробуйте снова.')
-            await add_role(num, ctx)
-    except:
-        request='0'
-    if num-int(request[-1])>0:
-        await add_role(num-int(request[-1]), ctx)
-
-roles_num_b = {'1':0,'2':0,'3':0,'4':0,'5':0,'6':0,'7':0,'8':0,'9':0,'10':0,'11':0,'12':0,'13':0,'14':0}
-players = 0
-tumb=0
-time = 10
-voted=[]
-votes=[]
-already=[]
-available=[]
-guilty={}
-checker=0
-killed=['-']
-vote_choice = ''
-mode = 'non-auto'
-right = None
-roles_num = {}
-player_roles = {}
-
+#-----------------Main commands---------------------
 
 @client.command()
 async def change(ctx):
@@ -345,7 +174,6 @@ async def change(ctx):
     else:
         mode = 'non-auto'
         await ctx.send("Предустановка игры переключена на режим с ведущим.")
-
 
 @client.command()
 async def create(ctx):
@@ -523,6 +351,184 @@ async def give(ctx):
             await ctx.send("Роли были распределены. Удачной игры!")
     else:
         await ctx.send("Количество участников голосового канала и количество указанных игроков не соответствует.")
+
+@client.command()
+async def start(ctx):
+    if mode == 'non-auto':
+        await ctx.send('Эта команда доступна только для режима без ведущего.')
+    else:
+        try:
+            for i in range(len(members)):
+                try:
+                    await members[i].edit(nick=(str(i+1)+'. '+str(members[i])[:-5]))
+                except:
+                    pass
+            members[0]
+            await ctx.send('Игра началась!')
+        except:
+            await ctx.send('Необходимо сначала задать список ролей для игры.')
+
+@client.event
+async def on_message(mess):
+    if mess.author == client.user and mess.guild != None:
+        if mess.content == 'Игра началась!': # День знакомств
+            await mess.channel.send('Начинается день знакомств')
+            global already
+            already = [0 for i in range(len(members))]
+            global time
+            global tumb
+            global available
+            global right
+            global checker
+            global vn
+            vn = 0
+            tumb = 0
+            available = [1 for i in range(len(members))]
+            for member in members:
+                right=member
+                checker = 0
+                await timer(time,mess,member,0)
+            await mess.channel.send('Наступает день')
+        if mess.content == 'Наступает день':#объявление убитых+выставление на голосование игроков
+            await mess.channel.send('Ночью были убиты игроки под номерами: '+ (', ').join(killed))
+            #for person in killed:
+                #available[int(person)-1] = 0
+                #await members[int(person)-1].edit(nick=str(person) + '. ' + str(members[int(person)-1])[:-5] + ' ☠', mute=True)
+            await mess.channel.send('Начинается обсуждение и выставление кандидатур на голосование.')
+            global voted
+            global votes
+            global right_to_vote
+            voted=[]
+            votes = [0 for i in range(len(members))]#колличественные голоса за игроков
+            killed.clear()
+            global vote_choice
+            for i in range(len(available)):
+                if available[i] == 1:
+                    checker = 0
+                    vote_choice = ''
+                    member = members[i]
+                    right = member
+                    right_to_vote=member
+                    await timer(time,mess,member,0)
+                    if vote_choice == '':
+                        pass
+                    elif vote_choice-1 not in voted:
+                        voted.append(vote_choice-1)
+            right_to_vote=None
+            if len(voted)==0:
+                await mess.channel.send('Было принято решение никого не сажать в тюрьму.')
+            else:
+                m=[]
+                for i in range(len(voted)):
+                    m.append(str(voted[i]+1))
+                await mess.channel.send('Обвиняются игроки под номерами: ' + (', ').join(m))
+                await mess.channel.send('Обвиняемым предоставляется оправдательная речь')
+        if mess.content == 'Обвиняемым предоставляется оправдательная речь':
+            for i in voted:
+                checker=0
+                member = members[i]
+                right = member
+                await timer(time,mess,member,0)
+            await mess.channel.send('Начинается голосование')
+        if mess.content == 'Начинается голосование':
+            tumb = 1
+            votes.append(1)
+            right = None
+            vn=1
+            for i in voted:
+                member = members[i]
+                global gl
+                gl = member
+                await timer(time,mess,member,1)
+            del votes[-1]
+            for i in range(len(already)):
+                if available[i]==1 and already[i]==0:
+                    votes[voted[-1]]+=1
+            await mess.channel.send('Голосование окончено')
+        if mess.content == 'Голосование окончено':
+            if votes.count(max(votes)) == 1:
+                guil=votes.index(max(votes))
+                vn=0
+                right=members[guil]
+                checker=0
+                await mess.channel.send('Приговоренному дается право произнести последнюю речь.')
+                await timer(time,mess,members[guil],0)
+                available[guil]=0
+                await members[guil].edit(nick=str(guil+1) + '. ' + str(members[guil])[:-5] + ' ☠',mute=True)
+                await mess.channel.send(str(members[guil])[:-5] + ' был посажен за решетку!')
+            else:
+                global guilty
+                for i in range(len(votes)):
+                    if votes[i] == max(votes):
+                        guilty[i+1] = 0
+                await mess.channel.send('Обвиняемым '+str(guilty.keys())[11:-2]+' предоставляются дополнительные оправдательные речи.')
+                guilty.clear()
+                right = None
+                vn=0
+                for i in range(len(votes)):
+                    if votes[i] == max(votes):
+                        checker=0
+                        guilty[i] = 0
+                        member = members[i]
+                        right=member
+                        await timer(time,mess,member,0)
+                await mess.channel.send('Начинается повторное голосование.')
+                right = None
+                already = [0 for i in range(len(members))]
+                for i in range(len(guilty)):
+                    vn=2
+                    member = members[list(guilty.keys())[i]]
+                    global ind
+                    ind=list(guilty.keys())[i]
+                    await timer(time, mess, member, 1)
+                for i in range(len(already)):
+                    if available[i] == 1 and already[i] == 0:
+                        guilty[list(guilty.keys())[-1]] += 1
+                if list(guilty.values()).count(max(guilty.values())) == 1:
+                    vn=0
+                    for i in range(len(guilty)):
+                        if guilty[i] == max(guilty.values()):
+                            checker=0
+                            right=members[list(guilty.keys())[i]]
+                            await mess.channel.send('Приговоренному дается право произнести последнюю речь.')
+                            await timer(time, mess, members[list(guilty.keys())[i]], 0)
+                            available[i] = 0
+                            try:
+                                await members[i].edit(nick=str(i + 1) + '. ' + str(members[i])[:-5] + ' ☠',mute=True)
+                                await mess.channel.send(str(members[i])[:-5] + ' был посажен за решетку!')
+                            except:
+                                pass
+                            break
+                else:
+                    for i in list(guilty.keys()):
+                        if guilty[i]!=max(guilty.values()):
+                            del guilty[i]
+                    await mess.channel.send('По-прежнему остались игроки с одинаковым количеством голосов, поэтому принимается решение: выгнать или оставить всех.\n✅ - выгнать, ⛔ - оставить')
+                    global count
+                    count=0
+                    vn=3
+                    right=None
+                    already = [0 for i in range(len(members))]
+                    checker=0
+                    await timer(time,mess,member,2)
+                    for i in range(len(already)):
+                        if available[i]==1 and already[i]==0:
+                            count-=1
+                    if count>0:
+                        await mess.channel.send('Приговоренным дается право произнести последнюю речь.')
+                        vn=0
+                        for i in list(guilty.keys()):
+                            checker=0
+                            right=members[list(guilty.keys())[i]]
+                            await timer(time, mess, members[list(guilty.keys())[i]], 0)
+                            available[i] = 0
+                            await members[i].edit(nick=str(i + 1) + '. ' + str(members[i])[:-5] + ' ☠', mute=True)
+                            await mess.channel.send(str(members[i])[:-5] + ' был посажен за решетку!')
+                    else:
+                        await mess.channel.send('Было принято решение никого не сажать в тюрьму.')
+    await client.process_commands(mess)
+
+#---------------------Token-------------------------
 
 token = 'NzEzMzczNTg4ODYxODc4MzQz.XsfK7Q.IigCNgypVztyU5cOg_Bg2tgOYsI'
 client.run(token)
