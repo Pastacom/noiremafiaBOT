@@ -504,7 +504,7 @@ async def on_message(mess):
                 if maniac > 0 and red + black + two_faced == 0:
                     await mess.channel.send('Игра окончена! Победа маньяка 🔪')
                     return
-                elif maniac == 0 and black >= red:
+                elif maniac == 0 and ((black >= red) or (red + black == 0 and two_faced > 0)):
                     await mess.channel.send('Игра окончена! Победа мафии 🕵️')
                     return
                 elif maniac == 0 and black == 0 and red > 0:
@@ -567,7 +567,7 @@ async def on_message(mess):
                     if maniac > 0 and red + black + two_faced == 0:
                         await mess.channel.send('Игра окончена! Победа маньяка 🔪')
                         return
-                    elif maniac == 0 and black >= red:
+                    elif maniac == 0 and ((black >= red) or (red + black == 0 and two_faced > 0)):
                         await mess.channel.send('Игра окончена! Победа мафии 🕵️')
                         return
                     elif maniac == 0 and black == 0 and red > 0:
@@ -612,7 +612,7 @@ async def on_message(mess):
                         if maniac > 0 and red + black + two_faced == 0:
                             await mess.channel.send('Игра окончена! Победа маньяка 🔪')
                             return
-                        elif maniac == 0 and black >= red:
+                        elif maniac == 0 and ((black >= red) or (red + black == 0 and two_faced > 0)):
                             await mess.channel.send('Игра окончена! Победа мафии 🕵️')
                             return
                         elif maniac == 0 and black == 0 and red > 0:
