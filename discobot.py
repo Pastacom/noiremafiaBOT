@@ -371,11 +371,11 @@ async def start(ctx):
                 global black, red, two_faced, maniac
                 black, red, two_faced, maniac = 0,0,0,0
                 for i in list(player_roles.values()):
-                    if i in [2,3,10,12]:
+                    if int(i) in [2,3,10,12]:
                         black+=1
-                    elif i == 6:
+                    elif int(i) == 6:
                         maniac+=1
-                    elif i == 9:
+                    elif int(i) == 9:
                         two_faced+=1
                     else:
                         red+=1
@@ -400,20 +400,23 @@ async def on_message(mess):
         if mess.content == 'Наступает день 🌇':#объявление убитых+выставление на голосование игроков
             await mess.channel.send('Ночью были убиты игроки под номерами: '+ (', ').join(killed))
             '''for person in killed:
-                if player_roles[members[int(person)-1]] in [2,3,10,12]:
+                if int(player_roles[members[int(person)-1]]) in [2,3,10,12]:
                     black-=1
-                elif player_roles[members[int(person)-1]] == 6:
+                elif int(player_roles[members[int(person)-1]]) == 6:
                     maniac-=1
-                elif player_roles[members[int(person)-1]] == 9:
+                elif int(player_roles[members[int(person)-1]]) == 9:
                     two_faced-=1
                 else:
                     red-=1
                 player_roles[members[int(person)-1]] = 0
-                await members[int(person)-1].edit(nick=str(person) + '. ' + str(members[int(person)-1])[:-5] + ' ☠', mute=True)
+                try:
+                    await members[int(person)-1].edit(nick=str(person) + '. ' + str(members[int(person)-1])[:-5] + ' ☠')
+                except:
+                    pass
             if maniac>0 and red+black+two_faced==0:
                 await mess.channel.send('Игра окончена! Победа маньяка 🔪')
                 return
-            elif maniac==0 and black>=red:
+            elif maniac == 0 and ((black >= red) or (red + black == 0 and two_faced > 0)):
                 await mess.channel.send('Игра окончена! Победа мафии 🕵️')
                 return
             elif maniac==0 and black==0 and red>0:
@@ -490,16 +493,19 @@ async def on_message(mess):
                 checker=0
                 await mess.channel.send('Приговоренному дается право произнести последнюю речь 👨‍⚖️')
                 await timer(time,mess,members[guil],0)
-                if player_roles[members[guil]] in [2,3,10,12]:
+                if int(player_roles[members[guil]]) in [2,3,10,12]:
                     black-=1
-                elif player_roles[members[guil]] == 6:
+                elif int(player_roles[members[guil]]) == 6:
                     maniac-=1
-                elif player_roles[members[guil]] == 9:
+                elif int(player_roles[members[guil]]) == 9:
                     two_faced-=1
                 else:
                     red-=1
                 player_roles[members[guil]]=0
-                await members[guil].edit(nick=str(guil+1) + '. ' + str(members[guil])[:-5] + ' ☠',mute=True)
+                try:
+                    await members[guil].edit(nick=str(guil+1) + '. ' + str(members[guil])[:-5] + ' ☠')
+                except:
+                    pass
                 await mess.channel.send(str(members[guil])[:-5] + ' был посажен за решетку 👮')
                 if maniac > 0 and red + black + two_faced == 0:
                     await mess.channel.send('Игра окончена! Победа маньяка 🔪')
@@ -549,17 +555,17 @@ async def on_message(mess):
                             right=members[list(guilty.keys())[i]]
                             await mess.channel.send('Приговоренному дается право произнести последнюю речь 👨‍⚖️')
                             await timer(time, mess, members[list(guilty.keys())[i]], 0)
-                            if player_roles[members[i]] in [2, 3, 10, 12]:
+                            if int(player_roles[members[i]]) in [2, 3, 10, 12]:
                                 black -= 1
-                            elif player_roles[members[i]] == 6:
+                            elif int(player_roles[members[i]]) == 6:
                                 maniac -= 1
-                            elif player_roles[members[i]] == 9:
+                            elif int(player_roles[members[i]]) == 9:
                                 two_faced -= 1
                             else:
                                 red -= 1
                             player_roles[members[i]]=0
                             try:
-                                await members[i].edit(nick=str(i + 1) + '. ' + str(members[i])[:-5] + ' ☠',mute=True)
+                                await members[i].edit(nick=str(i + 1) + '. ' + str(members[i])[:-5] + ' ☠')
                             except:
                                 pass
                                 await mess.channel.send(str(members[i])[:-5] + ' был посажен за решетку 👮')
@@ -598,16 +604,19 @@ async def on_message(mess):
                             checker=0
                             right=members[list(guilty.keys())[i]]
                             await timer(time, mess, members[list(guilty.keys())[i]], 0)
-                            if player_roles[members[i]] in [2, 3, 10, 12]:
+                            if int(player_roles[members[i]]) in [2, 3, 10, 12]:
                                 black -= 1
-                            elif player_roles[members[i]] == 6:
+                            elif int(player_roles[members[i]]) == 6:
                                 maniac -= 1
-                            elif player_roles[members[i]] == 9:
+                            elif int(player_roles[members[i]]) == 9:
                                 two_faced -= 1
                             else:
                                 red -= 1
                             player_roles[members[i]]=0
-                            await members[i].edit(nick=str(i + 1) + '. ' + str(members[i])[:-5] + ' ☠', mute=True)
+                            try:
+                                await members[i].edit(nick=str(i + 1) + '. ' + str(members[i])[:-5] + ' ☠')
+                            except:
+                                pass
                             await mess.channel.send(str(members[i])[:-5] + ' был посажен за решетку 👮')
                         if maniac > 0 and red + black + two_faced == 0:
                             await mess.channel.send('Игра окончена! Победа маньяка 🔪')
