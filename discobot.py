@@ -9,16 +9,16 @@ prefix = "!"
 client = commands.Bot(command_prefix=prefix)
 client.remove_command("help")
 
-roles_num_b = {'1':0,'2':0,'3':0,'4':0,'5':0,'6':0,'7':0,'8':0,'9':0,'10':0,'11':0,'12':0}
+roles_num_b = {'1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 0, '8': 0, '9': 0, '10': 0, '11': 0, '12': 0}
 players = 0
-tumb=0
+tumb = 0
 time = 10
-voted=[]
-votes=[]
-already=[]
-guilty={}
-checker=0
-killed=['-']
+voted = []
+votes = []
+already = []
+guilty = {}
+checker = 0
+killed = ['-']
 vote_choice = ''
 mode = 'auto'
 right = None
@@ -27,12 +27,14 @@ player_roles = {}
 
 #------------------Bot is online-------------------
 
+
 @client.event
 async def on_ready():
     print("Bot is online.")
     await client.change_presence(status= discord.Status.online)
 
 #-----------------Utility commands------------------
+
 
 @client.command()
 async def unmute(ctx):
@@ -41,6 +43,35 @@ async def unmute(ctx):
 #-------------------Main body-----------------------
 
 #---------------Additional functions----------------
+
+
+async def win_condition(message):
+    global red, black, two_faced, maniac
+    if maniac > 0 and red + black + two_faced == 0:
+        await message.channel.send('Игра окончена! Победа маньяка 🔪')
+        return True
+    elif maniac == 0 and ((black >= red and black > 0) or (red + black == 0 and two_faced > 0)):
+        await message.channel.send('Игра окончена! Победа мафии 🕵️')
+        return True
+    elif maniac == 0 and black == 0 and red > 0:
+        await message.channel.send('Игра окончена! Победа мирного города 👥')
+        return True
+    elif maniac + black + two_faced + red == 0:
+        await message.channel.send('Игра окончена! Ничья. В городе не осталось живых ☠')
+        return True
+
+
+async def reduction_role_condition(i):
+    global red, black, two_faced, maniac
+    if int(player_roles[members[i]]) in [2, 3, 10, 12]:
+        black -= 1
+    elif int(player_roles[members[i]]) == 6:
+        maniac -= 1
+    elif int(player_roles[members[i]]) == 9:
+        two_faced -= 1
+    else:
+        red -= 1
+    player_roles[members[i]] = 0
 
 async def add_role(num, ctx):
     def check(m):
@@ -88,7 +119,7 @@ async def timer(time,mess,member,vt):
                     except:
                         pass
         await time_message.delete()
-    elif vt==1:
+    elif vt == 1:
         await mess.channel.send('Кто голосует за игрока  ' + str(member)[:-5]+'?')
         message = await mess.channel.send(str(time // 60) + ':' + str((time % 60) // 10) + str((time % 60) % 10))
         await message.add_reaction('✅')
@@ -119,9 +150,10 @@ async def timer(time,mess,member,vt):
                         pass
         await message.delete()
 
+
 @client.event
 async def on_reaction_add(reaction,user):
-    global count,checker,nm
+    global count, checker, nm
     if reaction.emoji == '⛔' and user == right and vn==0:
         checker = 1
     elif reaction.emoji == '⛔' and user!=reaction.message.author and vn==3 and user in members:
@@ -147,6 +179,7 @@ async def on_reaction_add(reaction,user):
             if nm == 0:
                 await reaction.message.delete()
                 await reaction.message.channel.send('Наступает ночь 🌃')
+
 
 @client.command()
 async def vote(ctx,choice):
@@ -176,6 +209,7 @@ async def vote(ctx,choice):
 
 #-----------------Main commands---------------------
 
+
 @client.command()
 async def change(ctx):
     global mode
@@ -189,6 +223,7 @@ async def change(ctx):
             mode = 'non-auto'
             await ctx.send("Предустановка игры переключена на режим с ведущим.")
 
+
 @client.command()
 async def create(ctx):
     global roles_num
@@ -198,8 +233,10 @@ async def create(ctx):
     if mode == "non-auto" and type(ctx.channel) != discord.channel.DMChannel:
         await ctx.send("Перед началом удостоверьтесь, все ли желающие подключены к Вашему голосовому каналу, в противном случае не все роли смогут выдаться.\nЕсли всё готово, можно приступать к настройке игровой сессии.")
         roles_num = roles_num_b.copy()
+
         def check(m):
             return m.author.id == ctx.author.id
+
         members = ctx.message.author.voice.channel.members
         for member in members:
             if member.bot:
@@ -285,7 +322,7 @@ async def give(ctx):
                         del roles_num[role]
             counter = 1
             for member in members:
-                counter+=1
+                counter += 1
                 random.seed(random.randint(0, 100))
                 index_of_giving_role = random.randint(0, len(roles_num_list) - 1)
                 giving_role = roles_num_list[index_of_giving_role]
@@ -369,26 +406,27 @@ async def start(ctx):
                     except:
                         pass
                 global black, red, two_faced, maniac
-                black, red, two_faced, maniac = 0,0,0,0
+                black, red, two_faced, maniac = 0, 0, 0, 0
                 for i in list(player_roles.values()):
-                    if int(i) in [2,3,10,12]:
-                        black+=1
+                    if int(i) in [2, 3, 10, 12]:
+                        black += 1
                     elif int(i) == 6:
-                        maniac+=1
+                        maniac += 1
                     elif int(i) == 9:
-                        two_faced+=1
+                        two_faced += 1
                     else:
-                        red+=1
+                        red += 1
                 await ctx.send('💠 ИГРА НАЧАЛАСЬ 💠')
             except:
                 await ctx.send('Необходимо сначала задать список ролей для игры.')
+
 
 @client.event
 async def on_message(mess):
     if mess.author == client.user and mess.guild != None:
         if mess.content == '💠 ИГРА НАЧАЛАСЬ 💠': # День знакомств
             await mess.channel.send('Начинается день знакомств 🤝')
-            global already,time,tumb,right,checker,vn,black,red,maniac,two_faced
+            global already, time, tumb, right, checker, vn, black, red, maniac, two_faced
             already = [0 for i in range(len(members))]
             vn = 0
             tumb = 0
@@ -398,39 +436,26 @@ async def on_message(mess):
                 await timer(time,mess,member,0)
             await mess.channel.send('Наступает день 🌇')
         if mess.content == 'Наступает день 🌇':#объявление убитых+выставление на голосование игроков
-            await mess.channel.send('Ночью были убиты игроки под номерами: '+ (', ').join(killed))
+            await mess.channel.send('Ночью были убиты игроки под номерами: ' + (', ').join(killed))
             '''for person in killed:
-                if int(player_roles[members[int(person)-1]]) in [2,3,10,12]:
-                    black-=1
-                elif int(player_roles[members[int(person)-1]]) == 6:
-                    maniac-=1
-                elif int(player_roles[members[int(person)-1]]) == 9:
-                    two_faced-=1
-                else:
-                    red-=1
-                player_roles[members[int(person)-1]] = 0
+                await reduction_role_condition(int(person)-1)
                 try:
                     await members[int(person)-1].edit(nick=str(person) + '. ' + str(members[int(person)-1])[:-5] + ' ☠')
                 except:
                     pass
-            if maniac>0 and red+black+two_faced==0:
-                await mess.channel.send('Игра окончена! Победа маньяка 🔪')
-                return
-            elif maniac == 0 and ((black >= red) or (red + black == 0 and two_faced > 0)):
-                await mess.channel.send('Игра окончена! Победа мафии 🕵️')
-                return
-            elif maniac==0 and black==0 and red>0:
-                await mess.channel.send('Игра окончена! Победа мирного города 👥')
-                return
-            elif maniac+black+two_faced+red == 0:
-                await mess.channel.send('Игра окончена! Ничья. В городе не осталось живых ☠')
+            if await win_condition(mess) == True:
+                for member in members:
+                    try:
+                        await member.edit(nick=member.name)
+                    except:
+                        pass
                 return'''
             await mess.channel.send('Начинается обсуждение и выставление кандидатур на голосование 🗣️')
             global voted
             global votes
             global right_to_vote
             global nm
-            voted=[]
+            voted = []
             votes = [0 for i in range(len(members))]#колличественные голоса за игроков
             killed.clear()
             global vote_choice
@@ -440,25 +465,24 @@ async def on_message(mess):
                     vote_choice = ''
                     member = i
                     right = member
-                    right_to_vote=member
-                    await timer(time,mess,member,0)
+                    right_to_vote = member
+                    await timer(time, mess, member, 0)
                     if vote_choice == '':
                         pass
                     elif vote_choice-1 not in voted:
                         voted.append(vote_choice-1)
-            right_to_vote=None
-            if len(voted)==0:
+            right_to_vote = None
+            if len(voted) == 0:
                 await mess.channel.send('Было принято решение никого не сажать в тюрьму 🚫')
                 already = [0 for i in range(len(members))]
                 ms = await mess.channel.send('Город засыпает 💤')
                 await ms.add_reaction('💤')
-                nm=0
+                nm = 0
                 for i in list(player_roles.values()):
                     if i != 0:
-                        nm+=1
-
+                        nm += 1
             else:
-                m=[]
+                m = []
                 for i in range(len(voted)):
                     m.append(str(voted[i]+1))
                 await mess.channel.send('Обвиняются игроки под номерами: ' + (', ').join(m))
@@ -474,7 +498,7 @@ async def on_message(mess):
             tumb = 1
             votes.append(1)
             right = None
-            vn=1
+            vn = 1
             for i in voted:
                 member = members[i]
                 global gl
@@ -487,37 +511,24 @@ async def on_message(mess):
             await mess.channel.send('Голосование окончено')
         if mess.content == 'Голосование окончено':
             if votes.count(max(votes)) == 1:
-                guil=votes.index(max(votes))
-                vn=0
-                right=members[guil]
-                checker=0
+                guil = votes.index(max(votes))
+                vn = 0
+                right = members[guil]
+                checker = 0
                 await mess.channel.send('Приговоренному дается право произнести последнюю речь 👨‍⚖️')
                 await timer(time,mess,members[guil],0)
-                if int(player_roles[members[guil]]) in [2,3,10,12]:
-                    black-=1
-                elif int(player_roles[members[guil]]) == 6:
-                    maniac-=1
-                elif int(player_roles[members[guil]]) == 9:
-                    two_faced-=1
-                else:
-                    red-=1
-                player_roles[members[guil]]=0
+                await reduction_role_condition(guil)
                 try:
                     await members[guil].edit(nick=str(guil+1) + '. ' + str(members[guil])[:-5] + ' ☠')
                 except:
                     pass
                 await mess.channel.send(str(members[guil])[:-5] + ' был посажен за решетку 👮')
-                if maniac > 0 and red + black + two_faced == 0:
-                    await mess.channel.send('Игра окончена! Победа маньяка 🔪')
-                    return
-                elif maniac == 0 and ((black >= red) or (red + black == 0 and two_faced > 0)):
-                    await mess.channel.send('Игра окончена! Победа мафии 🕵️')
-                    return
-                elif maniac == 0 and black == 0 and red > 0:
-                    await mess.channel.send('Игра окончена! Победа мирного города 👥')
-                    return
-                elif maniac + black + two_faced + red == 0:
-                    await mess.channel.send('Игра окончена! Ничья. В городе не осталось живых ☠')
+                if await win_condition(mess) == True:
+                    for member in members:
+                        try:
+                            await member.edit(nick=member.name)
+                        except:
+                            pass
                     return
             else:
                 global guilty
@@ -527,108 +538,82 @@ async def on_message(mess):
                 await mess.channel.send('Обвиняемым '+str(guilty.keys())[11:-2]+' предоставляются дополнительные оправдательные речи 👨‍⚖️')
                 guilty.clear()
                 right = None
-                vn=0
+                vn = 0
                 for i in range(len(votes)):
                     if votes[i] == max(votes):
-                        checker=0
+                        checker = 0
                         guilty[i] = 0
                         member = members[i]
-                        right=member
-                        await timer(time,mess,member,0)
+                        right = member
+                        await timer(time, mess, member, 0)
                 await mess.channel.send('Начинается повторное голосование 📢')
                 right = None
                 already = [0 for i in range(len(members))]
                 for i in range(len(guilty)):
-                    vn=2
+                    vn = 2
                     member = members[list(guilty.keys())[i]]
                     global ind
-                    ind=list(guilty.keys())[i]
+                    ind = list(guilty.keys())[i]
                     await timer(time, mess, member, 1)
                 for i in list(player_roles.keys()):
                     if player_roles[i] != 0 and already[members.index(i)] == 0:
                         guilty[list(guilty.keys())[-1]] += 1
                 if list(guilty.values()).count(max(guilty.values())) == 1:
-                    vn=0
+                    vn = 0
                     for i in range(len(guilty)):
                         if guilty[i] == max(guilty.values()):
-                            checker=0
-                            right=members[list(guilty.keys())[i]]
+                            checker = 0
+                            right = members[list(guilty.keys())[i]]
                             await mess.channel.send('Приговоренному дается право произнести последнюю речь 👨‍⚖️')
                             await timer(time, mess, members[list(guilty.keys())[i]], 0)
-                            if int(player_roles[members[i]]) in [2, 3, 10, 12]:
-                                black -= 1
-                            elif int(player_roles[members[i]]) == 6:
-                                maniac -= 1
-                            elif int(player_roles[members[i]]) == 9:
-                                two_faced -= 1
-                            else:
-                                red -= 1
-                            player_roles[members[i]]=0
+
                             try:
                                 await members[i].edit(nick=str(i + 1) + '. ' + str(members[i])[:-5] + ' ☠')
                             except:
                                 pass
                                 await mess.channel.send(str(members[i])[:-5] + ' был посажен за решетку 👮')
                             break
-                    if maniac > 0 and red + black + two_faced == 0:
-                        await mess.channel.send('Игра окончена! Победа маньяка 🔪')
-                        return
-                    elif maniac == 0 and ((black >= red) or (red + black == 0 and two_faced > 0)):
-                        await mess.channel.send('Игра окончена! Победа мафии 🕵️')
-                        return
-                    elif maniac == 0 and black == 0 and red > 0:
-                        await mess.channel.send('Игра окончена! Победа мирного города 👥')
-                        return
-                    elif maniac + black + two_faced + red == 0:
-                        await mess.channel.send('Игра окончена! Ничья. В городе не осталось живых ☠')
+                    if await win_condition(mess) == True:
+                        for member in members:
+                            try:
+                                await member.edit(nick=member.name)
+                            except:
+                                pass
                         return
                 else:
                     for i in list(guilty.keys()):
-                        if guilty[i]!=max(guilty.values()):
+                        if guilty[i] != max(guilty.values()):
                             del guilty[i]
                     await mess.channel.send('По-прежнему остались игроки с одинаковым количеством голосов, поэтому принимается решение: выгнать или оставить всех\n✅ - выгнать, ⛔ - оставить')
                     global count
-                    count=0
-                    vn=3
-                    right=None
+                    count = 0
+                    vn = 3
+                    right = None
                     already = [0 for i in range(len(members))]
                     checker=0
-                    await timer(time,mess,member,2)
+                    await timer(time, mess, member, 2)
                     for i in list(player_roles.keys()):
                         if player_roles[i] != 0 and already[members.index(i)] == 0:
                             count-=1
-                    if count>0:
+                    if count > 0:
                         await mess.channel.send('Приговоренным дается право произнести последнюю речь 👨‍⚖️')
-                        vn=0
+                        vn = 0
                         for i in list(guilty.keys()):
-                            checker=0
-                            right=members[list(guilty.keys())[i]]
+                            checker = 0
+                            right = members[list(guilty.keys())[i]]
                             await timer(time, mess, members[list(guilty.keys())[i]], 0)
-                            if int(player_roles[members[i]]) in [2, 3, 10, 12]:
-                                black -= 1
-                            elif int(player_roles[members[i]]) == 6:
-                                maniac -= 1
-                            elif int(player_roles[members[i]]) == 9:
-                                two_faced -= 1
-                            else:
-                                red -= 1
-                            player_roles[members[i]]=0
+                            await reduction_role_condition(i)
                             try:
                                 await members[i].edit(nick=str(i + 1) + '. ' + str(members[i])[:-5] + ' ☠')
                             except:
                                 pass
                             await mess.channel.send(str(members[i])[:-5] + ' был посажен за решетку 👮')
-                        if maniac > 0 and red + black + two_faced == 0:
-                            await mess.channel.send('Игра окончена! Победа маньяка 🔪')
-                            return
-                        elif maniac == 0 and ((black >= red) or (red + black == 0 and two_faced > 0)):
-                            await mess.channel.send('Игра окончена! Победа мафии 🕵️')
-                            return
-                        elif maniac == 0 and black == 0 and red > 0:
-                            await mess.channel.send('Игра окончена! Победа мирного города 👥')
-                            return
-                        elif maniac + black + two_faced + red == 0:
-                            await mess.channel.send('Игра окончена! Ничья. В городе не осталось живых ☠')
+                        if await win_condition(mess) == True:
+                            for member in members:
+                                try:
+                                    await member.edit(nick=member.name)
+                                except:
+                                    pass
                             return
                     else:
                         await mess.channel.send('Было принято решение никого не сажать в тюрьму 🚫')
