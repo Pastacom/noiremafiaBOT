@@ -24,6 +24,12 @@ mode = 'auto'
 right = None
 roles_num = {}
 player_roles = {}
+player_status = {}
+sequence = [10, 7, [2, 3, 9, 12], 3, [4, 11], 5, 6]
+sequence_guild_message = ['Вора 🔐', 'Куртизанки 💋', 'Мафии 🕵️', 'Дона мафии 🥃', 'Полиции 🚔', 'Доктора 💉', 'Маньяка 🔪']
+mafia = []
+police = []
+roles_definition = {1: 'Мирный житель', 2: 'Мафия', 3: 'Дон мафии', 4: 'Комиссар', 5: 'Доктор', 6: 'Маньяк', 7: 'Куртизанка', 8: 'Бессмертный', 9: 'Двуликий', 10: 'Вор', 11: 'Сержант', 12: 'Оборотень'}
 roles_description = {'1': ['Ваша роль - Мирный житель.', 'Ваша задача состоит в том, чтобы вычислить представителей мафии и посадить в тюрьму. Сделать это вы можете только на дневном голосовании.', 'https://w-dog.pw/android-wallpapers/4/15/455401079884056/colton-haynes-guy-men-black-machine-black-and-white.jpg'],
                      '2': ['Ваша роль - Мафия.', 'Вы играете за черных. Ваша задача - избавиться от всех красных игроков в городе. Ночью вы просыпаетесь вместе с другими представителями мафии. Мафия убивает одного игрока за ночь, выбранного общим решением. Если возникают разногласия, то финальное решение принимается Доном мафии. При смерти Дона, убивается цель, за которую проголосовало большее кол-во игроков.', 'https://media.discordapp.net/attachments/713363794138628176/713742967390601277/8011f830f532082c.jpg?width=782&height=519'],
                      '3': ['Ваша роль - Дон мафии.', 'Вы играете за черных. Ваша задача - избавиться от всех красных игроков в городе и обнаружить комиссара, как можно скорее. Ночью вы просыпаетесь дважды, сначала вместе с другими представителями мафии, затем отдельно. Мафия убивает одного игрока за ночь, выбранного общим решением. Если возникают разногласия, то финальное решение принимается вами. Когда вы проснетесь второй раз вы можете указать на любого игрока, если этот игрок - комиссар, то ведущий даст соответсвующий знак.', 'https://media.discordapp.net/attachments/713363794138628176/713742944728907786/f1c3da335e7e8b0f.jpg?width=519&height=519'],
@@ -45,7 +51,7 @@ roles_description = {'1': ['Ваша роль - Мирный житель.', 'В
 @client.event
 async def on_ready():
     print("Bot is online.")
-    await client.change_presence(status= discord.Status.online)
+    await client.change_presence(status=discord.Status.online)
 
 #-----------------Utility commands------------------
 
@@ -66,7 +72,30 @@ async def action(ctx):
     if ctx.guild == None:
         await ctx.send('Выбор сделан')
 #---------------Additional functions----------------
-
+async def status_maker(i):
+    player_status[i][0], player_status[i][1], player_status[i][4] = 1, 0, -1
+    if player_roles[i] == '4':
+        player_status[i][2] = 3
+        police.append(i)
+    elif player_roles[i] == '11':
+        player_status[i][2] = 2
+        police.append(i)
+    else:
+        player_status[i][2] = 0
+    if player_roles[i] == '2':
+        player_status[i][3] = 4
+        mafia.append(i)
+    elif player_roles[i] == '3':
+        player_status[i][3] = 5
+        mafia.append(i)
+    elif player_roles[i] == '12':
+        player_status[i][3] = 3
+        mafia.append(i)
+    elif player_roles[i] == '9':
+        player_status[i][3] = 1
+        mafia.append(i)
+    else:
+        player_status[i][3] = 0
 
 async def win_condition(message):
     global red, black, two_faced, maniac
@@ -94,7 +123,7 @@ async def reduction_role_condition(i):
         two_faced -= 1
     else:
         red -= 1
-    player_roles[members[i]] = 0
+    player_status[members[i]][0] = 0
 
 async def add_role(num, ctx):
     def check(m):
@@ -142,12 +171,12 @@ async def timer(time,mess,member,vt):
                     except:
                         pass
         await time_message.delete()
-    else:
+    elif vt == 1 or vt == 2:
         if vt == 1:
             await mess.channel.send('Кто голосует за игрока  ' + str(member)[:-5]+'?')
             time_message = await mess.channel.send(str(time // 60) + ':' + str((time % 60) // 10) + str((time % 60) % 10))
             await time_message.add_reaction('✅')
-        else:
+        elif vt == 2:
             time_message = await mess.channel.send(str(time // 60) + ':' + str((time % 60) // 10) + str((time % 60) % 10))
             await time_message.add_reaction('✅')
             await time_message.add_reaction('⛔')
@@ -162,36 +191,59 @@ async def timer(time,mess,member,vt):
                     except:
                         pass
         await time_message.delete()
+    elif vt == 3:
+        time_message_1 = await mess.channel.send(str(time // 60) + ':' + str((time % 60) // 10) + str((time % 60) % 10))
+        time_message_2 = await member.send(str(time // 60) + ':' + str((time % 60) // 10) + str((time % 60) % 10))
+        for i in range(time - 1, -1, -1):
+            time_break = tm.time()
+            while True:
+                if tm.time() - time_break > 1.0:
+                    time_break = tm.time()
+                    try:
+                        await time_message_1.edit(content=str(i // 60) + ':' + str((i % 60) // 10) + str((i % 60) % 10))
+                        await time_message_2.edit(content=str(i // 60) + ':' + str((i % 60) // 10) + str((i % 60) % 10))
+                        break
+                    except:
+                        pass
+        await time_message_1.delete()
+        await time_message_2.delete()
 
 
 @client.event
 async def on_reaction_add(reaction,user):
     global count, checker, nm, gl
-    if reaction.emoji == '⛔' and user == right and vn==0:
+    if reaction.emoji == '⛔' and user == right and vn == 0:
         checker = 1
-    elif reaction.emoji == '⛔' and user!=reaction.message.author and vn==3 and user in members:
-        if already[members.index(user)] == 0 and player_roles[user] != 0:
+    elif reaction.emoji == '⛔' and user!=reaction.message.author and vn == 3 and user in members:
+        if already[members.index(user)] == 0 and player_status[user][0] != 0:
             count -= 1
             already[members.index(user)] = 1
-    elif reaction.emoji == '✅' and user!=reaction.message.author and vn==1 and user in members:
-        if already[members.index(user)] == 0 and player_roles[user] != 0:
+    elif reaction.emoji == '✅' and user!=reaction.message.author and vn == 1 and user in members:
+        if already[members.index(user)] == 0 and player_status[user][0] != 0:
             votes[members.index(gl)] += 1
             already[members.index(user)] = 1
     elif reaction.emoji == '✅' and user != reaction.message.author and vn == 2 and user in members:
-        if already[members.index(user)] == 0 and player_roles[user] != 0:
+        if already[members.index(user)] == 0 and player_status[user][0] != 0:
             already[members.index(user)] = 1
             guilty[ind] += 1
     elif reaction.emoji == '✅' and user != reaction.message.author and vn == 3 and user in members:
-        if already[members.index(user)] == 0 and player_roles[user] != 0:
+        if already[members.index(user)] == 0 and player_status[user][0] != 0:
             already[members.index(user)] = 1
             count += 1
     elif reaction.emoji == '💤' and user != reaction.message.author and user in members:
-        if already[members.index(user)] == 0 and player_roles[user] != 0:
+        if already[members.index(user)] == 0 and player_status[user][0] != 0:
             already[members.index(user)] = 1
             nm-=1
             if nm == 0:
                 await reaction.message.delete()
                 await reaction.message.channel.send('Наступает ночь 🌃')
+    elif reaction.emoji == '⏰' and user != reaction.message.author and user in members:
+        if already[members.index(user)] == 0 and player_status[user][0] != 0:
+            already[members.index(user)] = 1
+            nm-=1
+            if nm == 0:
+                await reaction.message.delete()
+                await reaction.message.channel.send('Наступает день 🌇')
 
 
 @client.command()
@@ -208,7 +260,7 @@ async def vote(ctx,choice):
                 await ctx.send('Игрока под номером ' + str(choice) + ' не существует, проголосуйте за другого.')
             elif choice-1 in voted and sum(votes) == 0:
                 await ctx.send('Этот игрок уже выставлен на голосование. Выберите другого.')
-            elif player_roles[members[choice-1]] == 0:
+            elif player_status[members[choice-1]][0] == 0:
                 await ctx.send('Этот игрок уже убит. Выберите другого.')
             else:
                 vote_choice=choice
@@ -256,7 +308,7 @@ async def day(mess):
     killed.clear()
     global vote_choice
     for i in list(player_roles.keys()):
-        if player_roles[i] != 0:
+        if player_status[i][0] != 0:
             checker = 0
             vote_choice = ''
             member = i
@@ -274,8 +326,8 @@ async def day(mess):
         ms = await mess.channel.send('Город засыпает 💤')
         await ms.add_reaction('💤')
         nm = 0
-        for i in list(player_roles.values()):
-            if i != 0:
+        for i in list(player_status.values()):
+            if i[0] != 0:
                 nm += 1
     else:
         m = []
@@ -298,7 +350,7 @@ async def day(mess):
             gl = member
             await timer(time, mess, member, 1)
         for i in list(player_roles.keys()):
-            if player_roles[i] != 0 and already[members.index(i)] == 0:
+            if player_status[i][0] != 0 and already[members.index(i)] == 0:
                 votes[voted[-1]] += 1
         await mess.channel.send('Голосование окончено')
         if votes.count(max(votes)) == 1:
@@ -347,7 +399,7 @@ async def day(mess):
                 ind = list(guilty.keys())[i]
                 await timer(time, mess, member, 1)
             for i in list(player_roles.keys()):
-                if player_roles[i] != 0 and already[members.index(i)] == 0:
+                if player_status[i][0] != 0 and already[members.index(i)] == 0:
                     guilty[list(guilty.keys())[-1]] += 1
             if list(guilty.values()).count(max(guilty.values())) == 1:
                 vn = 0
@@ -385,7 +437,7 @@ async def day(mess):
                 checker = 0
                 await timer(time, mess, member, 2)
                 for i in list(player_roles.keys()):
-                    if player_roles[i] != 0 and already[members.index(i)] == 0:
+                    if player_status[i][0] != 0 and already[members.index(i)] == 0:
                         count -= 1
                 if count > 0:
                     await mess.channel.send('Приговоренным дается право произнести последнюю речь 👨‍⚖️')
@@ -413,13 +465,28 @@ async def day(mess):
         ms = await mess.channel.send('Город засыпает 💤')
         await ms.add_reaction('💤')
         nm = 0
-        for i in list(player_roles.values()):
-            if i != 0:
+        for i in list(player_status.values()):
+            if i[0] != 0:
                 nm += 1
 
 
 async def night(mess):
-    await mess.channel.send('Наступает день 🌇')
+    global vn, right, nm, already
+    vn, right = 0, None
+    for i in range(len(sequence)):
+        if type(sequence[i]) == int:
+            for j in list(player_roles.keys()):
+                if int(player_roles[j]) == sequence[i]:
+                    await j.send('Ваш Ход!')
+                    await mess.channel.send('Ход ' + sequence_guild_message[i])
+                    await timer(30, mess, j, 3)
+    already = [0 for i in range(len(members))]
+    ms = await mess.channel.send('Город просыпается ⏰')
+    await ms.add_reaction('⏰')
+    nm = 0
+    for i in list(player_status.values()):
+        if i[0] != 0:
+            nm += 1
 
 
 @client.command()
@@ -562,7 +629,7 @@ async def start(ctx):
                         await members[i].edit(nick=(str(i+1)+'. '+str(members[i])[:-5]))
                     except:
                         pass
-                global black, red, two_faced, maniac
+                global black, red, two_faced, maniac, player_status
                 black, red, two_faced, maniac = 0, 0, 0, 0
                 for i in list(player_roles.values()):
                     if int(i) in [2, 3, 10, 12]:
@@ -573,6 +640,9 @@ async def start(ctx):
                         two_faced += 1
                     else:
                         red += 1
+                player_status = {members[x]: [0 for i in range(5)] for x in range(len(members))}
+                for i in list(player_roles.keys()):
+                    await status_maker(i)
                 await ctx.send('💠 ИГРА НАЧАЛАСЬ 💠')
             except:
                 await ctx.send('Необходимо сначала задать список ролей для игры.')
@@ -587,8 +657,8 @@ async def on_message(mess):
             await day(mess)
         if mess.content == 'Наступает ночь 🌃':
             await night(mess)
-    elif mess.guild == None and mess.content[0]!='!':#эхо для командынх игроков. ДОРАБОТАТЬ
-        if mess.author in members:
+    elif mess.guild == None and mess.author != client.user:#эхо для командынх игроков. ДОРАБОТАТЬ
+        if mess.author in members and mess.content[0] != '!':
             for member in members:
                 if member != mess.author:
                     await member.send(str(mess.author)[:-5] + ': ' + mess.content)
