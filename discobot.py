@@ -61,19 +61,66 @@ async def unmute(ctx):
     await ctx.author.edit(mute=False)
 
 #-------------------Main body-----------------------
-@client.command()# ДОРАБОТАТЬ
-async def test(ctx):
-    global members
-    members = ctx.message.author.voice.channel.members
 
 
 @client.command()# ДОРАБОТАТЬ
-async def action(ctx):
-    if ctx.guild == None:
-        await ctx.send('Выбор сделан')
+async def action(ctx, choice):
+    if ctx.author in right_to_act and ctx.guild == None:
+        if player_status[ctx.author][5] == 1:
+            await ctx.send('Вы уже сходили')
+            return
+        try:
+            choice = int(choice)
+        except:
+            return
+        if choice > len(members) or choice - 1 < 0:
+            await ctx.send('Игрока под номером ' + str(choice) + ' не существует, проголосуйте за другого.')
+            return
+        elif player_status[members[choice - 1]][0] == 0:
+            await ctx.send('Этот игрок уже убит. Выберите другого.')
+            return
+        else:
+            choice-=1
+            player_status[ctx.author][5] = 1
+            global right_to_act
+            if player_roles[ctx.author] == '10':
+                if player_status[ctx.author][4] != choice:
+                    player_status[ctx.author][4] = choice
+                    player_status[members[choice]][1] = 1
+                else:
+                    return
+            elif player_roles[ctx.author] == '7':
+                if player_status[ctx.author][4] != choice:
+                    if player_roles[members[choice]] != '6':
+                        player_status[ctx.author][4] = choice
+                        player_status[members[choice]][1] = 2
+                    else:
+                        player_status[ctx.author][0] = 0
+                else:
+                    ctx.send('Нельзя лишать одного и того же игрока хода два раза подряд')
+                    return
+            elif player_roles[ctx.author] == '4':
+                for member in police:
+                    if int(player_roles[choice]) in [1, 4, 5, 6, 7, 8, 11, 12]:
+                        member.send('Игрок под номером ' + str(choice+1) + 'играет за команду мирных')
+                    else:
+                        member.send('Игрок под номером ' + str(choice+1) + 'играет за команду мафии')
+            elif player_roles[ctx.author] == '5':
+                if player_status[ctx.author][4] != choice:
+                    player_status[ctx.author][4] = choice
+                    if str(choice+1) in killed:
+                        del killed[killed.index(str(choice+1))]
+                else:
+                    ctx.send('Нельзя лечить одного и того игрока два раза подряд')
+            elif player_roles[ctx.author] == '6':
+                player_status[members[choice]][0] = 0
+            else:
+                await ctx.send('Вы не ходите ночью')
+                return
+            await ctx.send('Выбор сделан')
 #---------------Additional functions----------------
 async def status_maker(i):
-    player_status[i][0], player_status[i][1], player_status[i][4] = 1, 0, -1
+    player_status[i][0], player_status[i][4] = 1, -1
     if player_roles[i] == '4':
         player_status[i][2] = 3
         police.append(i)
@@ -96,6 +143,18 @@ async def status_maker(i):
         mafia.append(i)
     else:
         player_status[i][3] = 0
+
+
+async def night_echo(mess):
+    if player_status[mess.author][2] > 1 and player_status[mess.author][1] == 0:
+        for member in police:
+            if member != mess.author and player_status[member][2] > 0 and player_status[member][1] == 0:
+                await member.send(str(mess.author)[:-5] + ': ' + mess.content)
+    elif player_status[mess.author][3] > 2 and player_status[mess.author][1] == 0:
+        for member in mafia:
+            if member != mess.author and player_status[member][3] > 1 and player_status[member][1] == 0:
+                await member.send(str(mess.author)[:-5] + ': ' + mess.content)
+
 
 async def win_condition(message):
     global red, black, two_faced, maniac
@@ -193,7 +252,8 @@ async def timer(time,mess,member,vt):
         await time_message.delete()
     elif vt == 3:
         time_message_1 = await mess.channel.send(str(time // 60) + ':' + str((time % 60) // 10) + str((time % 60) % 10))
-        time_message_2 = await member.send(str(time // 60) + ':' + str((time % 60) // 10) + str((time % 60) % 10))
+        if player_status[member][0]!=0:
+            time_message_2 = await member.send(str(time // 60) + ':' + str((time % 60) // 10) + str((time % 60) % 10))
         for i in range(time - 1, -1, -1):
             time_break = tm.time()
             while True:
@@ -201,12 +261,14 @@ async def timer(time,mess,member,vt):
                     time_break = tm.time()
                     try:
                         await time_message_1.edit(content=str(i // 60) + ':' + str((i % 60) // 10) + str((i % 60) % 10))
-                        await time_message_2.edit(content=str(i // 60) + ':' + str((i % 60) // 10) + str((i % 60) % 10))
+                        if player_status[member][0] != 0:
+                            await time_message_2.edit(content=str(i // 60) + ':' + str((i % 60) // 10) + str((i % 60) % 10))
                         break
                     except:
                         pass
         await time_message_1.delete()
-        await time_message_2.delete()
+        if player_status[member][0] != 0:
+            await time_message_2.delete()
 
 
 @client.event
@@ -254,7 +316,7 @@ async def vote(ctx,choice):
             try:
                 choice = int(choice)
             except:
-                pass
+                return
             global tumb
             if choice > len(members) or choice - 1 < 0:
                 await ctx.send('Игрока под номером ' + str(choice) + ' не существует, проголосуйте за другого.')
@@ -471,18 +533,23 @@ async def day(mess):
 
 
 async def night(mess):
-    global vn, right, nm, already
-    vn, right = 0, None
+    global vn, nm, already, right_to_act
+    vn, = 4
     for i in range(len(sequence)):
         if type(sequence[i]) == int:
             for j in list(player_roles.keys()):
                 if int(player_roles[j]) == sequence[i]:
-                    await j.send('Ваш Ход!')
+                    if player_status[j][0] != 0 and player_status[j][1] == 0:
+                        right_to_act = [j]
+                        await j.send('Ваш Ход!')
+                    elif player_status[j][1] in [1,2]:
+                        await j.send('Вас лишили хода!')
                     await mess.channel.send('Ход ' + sequence_guild_message[i])
                     await timer(30, mess, j, 3)
     already = [0 for i in range(len(members))]
     ms = await mess.channel.send('Город просыпается ⏰')
     await ms.add_reaction('⏰')
+    right_to_act.clear()
     nm = 0
     for i in list(player_status.values()):
         if i[0] != 0:
@@ -640,7 +707,7 @@ async def start(ctx):
                         two_faced += 1
                     else:
                         red += 1
-                player_status = {members[x]: [0 for i in range(5)] for x in range(len(members))}
+                player_status = {members[x]: [0 for i in range(6)] for x in range(len(members))}
                 for i in list(player_roles.keys()):
                     await status_maker(i)
                 await ctx.send('💠 ИГРА НАЧАЛАСЬ 💠')
@@ -651,17 +718,15 @@ async def start(ctx):
 @client.event
 async def on_message(mess):
     if mess.author == client.user and mess.guild != None:
-        if mess.content == '💠 ИГРА НАЧАЛАСЬ 💠': # День знакомств
+        if mess.content == '💠 ИГРА НАЧАЛАСЬ 💠':
             await meeting_day(mess)
-        if mess.content == 'Наступает день 🌇':#объявление убитых+выставление на голосование игроков
+        if mess.content == 'Наступает день 🌇':
             await day(mess)
         if mess.content == 'Наступает ночь 🌃':
             await night(mess)
-    elif mess.guild == None and mess.author != client.user:#эхо для командынх игроков. ДОРАБОТАТЬ
+    elif mess.guild == None and mess.author != client.user:
         if mess.author in members and mess.content[0] != '!':
-            for member in members:
-                if member != mess.author:
-                    await member.send(str(mess.author)[:-5] + ': ' + mess.content)
+            await night_echo(mess)
     await client.process_commands(mess)
 
 #---------------------Token-------------------------
