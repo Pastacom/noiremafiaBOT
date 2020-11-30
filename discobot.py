@@ -13,20 +13,22 @@ roles_num_b = {'1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 0, '8': 0, '
 players = 0
 tumb = 0
 time = 10
+mafia_vote = []
 voted = []
 votes = []
 already = []
 guilty = {}
 checker = 0
-killed = ['-']
+killed = []
 vote_choice = ''
 mode = 'auto'
 right = None
 roles_num = {}
 player_roles = {}
 player_status = {}
-sequence = [10, 7, [2, 3, 9, 12], 3, [4, 11], 5, 6]
-sequence_guild_message = ['Вора 🔐', 'Куртизанки 💋', 'Мафии 🕵️', 'Дона мафии 🥃', 'Полиции 🚔', 'Доктора 💉', 'Маньяка 🔪']
+sequence = [10, 7, [2, 9, 12], 3, [4, 11], 6, 5]
+right_to_chat = []
+sequence_guild_message = ['Вора 🔐', 'Куртизанки 💋', 'Мафии 🕵️', 'Дона мафии 🥃', 'Комиссара 🚔', 'Маньяка 🔪', 'Доктора 💉']
 mafia = []
 police = []
 roles_definition = {1: 'Мирный житель', 2: 'Мафия', 3: 'Дон мафии', 4: 'Комиссар', 5: 'Доктор', 6: 'Маньяк', 7: 'Куртизанка', 8: 'Бессмертный', 9: 'Двуликий', 10: 'Вор', 11: 'Сержант', 12: 'Оборотень'}
@@ -63,8 +65,12 @@ async def unmute(ctx):
 #-------------------Main body-----------------------
 
 
+#---------------Additional functions----------------
+
+
 @client.command()# ДОРАБОТАТЬ
 async def action(ctx, choice):
+    global right_to_act, killed, mafia_vote, don_phase
     if ctx.author in right_to_act and ctx.guild == None:
         if player_status[ctx.author][5] == 1:
             await ctx.send('Вы уже сходили')
@@ -82,12 +88,12 @@ async def action(ctx, choice):
         else:
             choice-=1
             player_status[ctx.author][5] = 1
-            global right_to_act
             if player_roles[ctx.author] == '10':
                 if player_status[ctx.author][4] != choice:
                     player_status[ctx.author][4] = choice
                     player_status[members[choice]][1] = 1
                 else:
+                    await ctx.send('Нельзя лишать одного и того же игрока хода два раза подряд')
                     return
             elif player_roles[ctx.author] == '7':
                 if player_status[ctx.author][4] != choice:
@@ -95,30 +101,58 @@ async def action(ctx, choice):
                         player_status[ctx.author][4] = choice
                         player_status[members[choice]][1] = 2
                     else:
-                        player_status[ctx.author][0] = 0
+                        killed.append(str(members.index(ctx.author)+1))
+                        player_status[members[choice]][1] = 2
                 else:
-                    ctx.send('Нельзя лишать одного и того же игрока хода два раза подряд')
+                    await ctx.send('Нельзя лишать одного и того же игрока хода два раза подряд')
                     return
-            elif player_roles[ctx.author] == '4':
+            elif player_roles[ctx.author] == '4' or (player_roles[ctx.author] == '11' and player_status[ctx.author][2] == 3):
                 for member in police:
-                    if int(player_roles[choice]) in [1, 4, 5, 6, 7, 8, 11, 12]:
-                        member.send('Игрок под номером ' + str(choice+1) + 'играет за команду мирных')
+                    if int(player_roles[members[choice]]) in [1, 4, 5, 6, 7, 8, 11, 12]:
+                        await member.send('Игрок под номером ' + str(choice+1) + ' играет за команду мирных')
                     else:
-                        member.send('Игрок под номером ' + str(choice+1) + 'играет за команду мафии')
+                        await member.send('Игрок под номером ' + str(choice+1) + ' играет за команду мафии')
             elif player_roles[ctx.author] == '5':
                 if player_status[ctx.author][4] != choice:
                     player_status[ctx.author][4] = choice
                     if str(choice+1) in killed:
+                        player_status[members[choice]][0] = 1
                         del killed[killed.index(str(choice+1))]
                 else:
-                    ctx.send('Нельзя лечить одного и того игрока два раза подряд')
+                    await ctx.send('Нельзя лечить одного и того игрока два раза подряд')
+                    return
             elif player_roles[ctx.author] == '6':
-                player_status[members[choice]][0] = 0
+                if player_roles[members[choice]] != '8' and player_status[members[choice]][1] != 2:
+                    killed.append(str(choice+1))
+            elif player_roles[ctx.author] == '12' and player_status[ctx.author][3] == 6:
+                if player_roles[members[choice]] != '8' and player_status[members[choice]][1] != 2:
+                    killed.append(str(choice + 1))
+            elif player_roles[ctx.author] == '9' and player_status[ctx.author][3] == 6:
+                if player_roles[members[choice]] != '8' and player_status[members[choice]][1] != 2:
+                    killed.append(str(choice + 1))
+            elif player_roles[ctx.author] == '9' and player_status[ctx.author][3] == 1:
+                if member[choice] != ctx.author:
+                    player_status[ctx.author][4] = choice
+                else:
+                    await ctx.send('Вам необходимо найти членов мафии. Нельзя выбирать целью себя самого')
+                    return
+            elif player_roles[ctx.author] == '2':
+                mafia_vote.append(str(choice+1))
+            elif player_roles[ctx.author] == '3' and don_phase == 1:
+                if player_roles[members[choice]] != '8' and player_status[members[choice]][1] != 2:
+                    killed.append(str(choice+1))
+                don_phase = 2
+            elif player_roles[ctx.author] == '3' and don_phase == 2:
+                if player_roles[members[choice]] == '4' or player_roles[members[choice]] == '11':
+                    await ctx.send('Этот игрок - комиссар или сержант')
+                else:
+                    await ctx.send('Этот игрок не комиссар и не сержант')
             else:
                 await ctx.send('Вы не ходите ночью')
                 return
             await ctx.send('Выбор сделан')
-#---------------Additional functions----------------
+
+
 async def status_maker(i):
     player_status[i][0], player_status[i][4] = 1, -1
     if player_roles[i] == '4':
@@ -252,8 +286,11 @@ async def timer(time,mess,member,vt):
         await time_message.delete()
     elif vt == 3:
         time_message_1 = await mess.channel.send(str(time // 60) + ':' + str((time % 60) // 10) + str((time % 60) % 10))
-        if player_status[member][0]!=0:
-            time_message_2 = await member.send(str(time // 60) + ':' + str((time % 60) // 10) + str((time % 60) % 10))
+        mafia_time = []
+        for i in member:
+            if player_status[i][0] != 0:
+                time_message_2 = await i.send(str(time // 60) + ':' + str((time % 60) // 10) + str((time % 60) % 10))
+                mafia_time.append(time_message_2)
         for i in range(time - 1, -1, -1):
             time_break = tm.time()
             while True:
@@ -261,14 +298,14 @@ async def timer(time,mess,member,vt):
                     time_break = tm.time()
                     try:
                         await time_message_1.edit(content=str(i // 60) + ':' + str((i % 60) // 10) + str((i % 60) % 10))
-                        if player_status[member][0] != 0:
-                            await time_message_2.edit(content=str(i // 60) + ':' + str((i % 60) // 10) + str((i % 60) % 10))
+                        for j in mafia_time:
+                                await j.edit(content=str(i // 60) + ':' + str((i % 60) // 10) + str((i % 60) % 10))
                         break
                     except:
                         pass
         await time_message_1.delete()
-        if player_status[member][0] != 0:
-            await time_message_2.delete()
+        for i in mafia_time:
+            await i.delete()
 
 
 @client.event
@@ -334,7 +371,7 @@ async def vote(ctx,choice):
 
 async def meeting_day(mess):
     await mess.channel.send('Начинается день знакомств 🤝')
-    global already, time, tumb, right, checker, vn
+    global already, time, tumb, right, checker, vn, nm
     already = [0 for i in range(len(members))]
     vn = 0
     tumb = 0
@@ -342,14 +379,20 @@ async def meeting_day(mess):
         right = member
         checker = 0
         await timer(time, mess, member, 0)
-    await mess.channel.send('Наступает ночь 🌃')
+    already = [0 for i in range(len(members))]
+    ms = await mess.channel.send('Город засыпает 💤')
+    await ms.add_reaction('💤')
+    nm = 0
+    for i in list(player_status.values()):
+        if i[0] != 0:
+            nm += 1
 
 
 async def day(mess):
     global already, time, tumb, right, checker, vn, black, red, maniac, two_faced, voted, votes, nm, right_to_vote, guilty
     await mess.channel.send('Ночью были убиты игроки под номерами: ' + (', ').join(killed))
     vn = 0
-    '''for person in killed:
+    for person in killed:
         await reduction_role_condition(int(person)-1)
         try:
             await members[int(person)-1].edit(nick=str(person) + '. ' + str(members[int(person)-1])[:-5] + ' ☠')
@@ -361,7 +404,7 @@ async def day(mess):
                 await member.edit(nick=member.name)
             except:
                 pass
-        return'''
+        return
     await mess.channel.send('Начинается обсуждение и выставление кандидатур на голосование 🗣️')
     voted = []
     votes = [0 for i in range(len(members))]  # колличественные голоса за игроков
@@ -533,19 +576,133 @@ async def day(mess):
 
 
 async def night(mess):
-    global vn, nm, already, right_to_act
-    vn, = 4
+    global vn, nm, already, right_to_act, killed, don_phase, right_to_chat, mafia_vote, two_faced, black
+    vn = 4
+    for member in player_roles:
+        if player_status[member][2] > 1 and player_status[member][0] == 0:
+            player_status[member][2] = 1
+        elif player_status[member][3] > 2 and player_status[member][0] == 0:
+            player_status[member][3] = 2
+        player_status[member][1] = 0
+        player_status[member][5] = 0
+        if player_roles[member] == '9':
+            if player_status[member][4] != -1 and members[player_status[member][4]] in mafia:
+                player_status[member][3] = 6
+                two_faced-=1
+                black+=1
+        elif player_roles[member] == '11':
+            for j in player_roles:
+                if player_roles[j] == '4' and player_status[j][0] == 0:
+                    player_status[member][2] = 3
+        elif player_roles[member] == '12':
+            count = 0
+            for j in player_roles:
+                if int(player_roles[j]) in [2, 3] and player_status[j][0] == 1:
+                    count += 1
+                    count += 1
+            if count == 0:
+                player_status[member][3] = 6
+            del count
     for i in range(len(sequence)):
         if type(sequence[i]) == int:
             for j in list(player_roles.keys()):
                 if int(player_roles[j]) == sequence[i]:
                     if player_status[j][0] != 0 and player_status[j][1] == 0:
                         right_to_act = [j]
-                        await j.send('Ваш Ход!')
-                    elif player_status[j][1] in [1,2]:
+                        await j.send('⚠️ ВАШ ХОД ⚠️')
+                    elif player_status[j][1] in [1, 2]:
                         await j.send('Вас лишили хода!')
                     await mess.channel.send('Ход ' + sequence_guild_message[i])
-                    await timer(30, mess, j, 3)
+                    if i != 3:
+                        await timer(15, mess, [j], 3)
+                    elif i == 3:
+                        right_to_chat = mafia.copy()
+                        await timer(10, mess, [j], 3)
+                        if don_phase == 1 and player_status[j][0] != 0 and player_status[j][1] == 0 and vote_results.count(max(vote_results)) == 1:
+                            killed.append(str(vote_results.index(max(vote_results))+1))
+                    right_to_act.clear()
+                    right_to_chat.clear()
+        elif type(sequence[i]) == list and i == 4:
+            right_to_chat = police.copy()
+            for j in list(player_roles.keys()):
+                if int(player_roles[j]) == 4 and player_status[j][0] != 0:
+                    if player_status[j][1] == 0:
+                        right_to_act = [j]
+                        await j.send('⚠️ ВАШ ХОД ⚠️')
+                    elif player_status[j][1] in [1, 2]:
+                        await j.send('Вас лишили хода!')
+                    await mess.channel.send('Ход ' + sequence_guild_message[i])
+                    await timer(30, mess, [j], 3)
+                    right_to_act.clear()
+                    break
+                elif int(player_roles[j]) == 11 and player_status[j][0] != 0:
+                    if player_status[j][1] == 0:
+                        right_to_act = [j]
+                        await j.send('⚠️ ВАШ ХОД ⚠️')
+                    elif player_status[j][1] in [1, 2]:
+                        await j.send('Вас лишили хода!')
+                    await mess.channel.send('Ход ' + sequence_guild_message[i])
+                    await timer(30, mess, [j], 3)
+                    right_to_act.clear()
+                    break
+            right_to_chat.clear()
+        elif type(sequence[i]) == list and i == 2:
+            right_to_chat = mafia.copy()
+            right_to_act = []
+            mafia_vote = []
+            for j in list(player_roles.keys()):
+                if int(player_roles[j]) == 9 and player_status[j][0] != 0:
+                    if player_status[j][1] == 0:
+                        right_to_act.append(j)
+                        await j.send('⚠️ ВАШ ХОД ⚠️')
+                    elif player_status[j][1] in [1, 2]:
+                        await j.send('Вас лишили хода!')
+                elif int(player_roles[j]) == 12 and player_status[j][0] != 0:
+                    count=0
+                    for member in list(player_roles.keys()):
+                        if int(player_roles[member]) in [2, 3] and player_status[member][0] != 0:
+                            count+=1
+                    if player_status[j][1] == 0 and count == 0:
+                        del count
+                        right_to_act.append(j)
+                        await j.send('⚠️ ВАШ ХОД ⚠️')
+                    elif player_status[j][1] in [1, 2]:
+                        await j.send('Вас лишили хода!')
+                elif int(player_roles[j]) == 2 and player_status[j][0] != 0:
+                    if player_status[j][1] == 0:
+                        right_to_act.append(j)
+                        await j.send('⚠️ ВАШ ХОД ⚠️')
+                    elif player_status[j][1] in [1, 2]:
+                        await j.send('Вас лишили хода!')
+            await mess.channel.send('Ход ' + sequence_guild_message[i])
+            await timer(10, mess, right_to_act, 3)
+            right_to_act.clear()
+            vote_results = []
+            for j in range(1, len(members)+1):
+                vote_results.append(mafia_vote.count(str(j)))
+            for j in list(player_roles.keys()):
+                if player_roles[j] == '3' and player_status[j][0] != 0 and player_status[j][1] == 0:
+                    right_to_act = [j]
+                    if sum(vote_results) != 0:
+                        for l in range(len(vote_results)):
+                            if vote_results[l] != 0:
+                                await j.send(str(vote_results[l]) + ' проголосовал(-о) за убийство ' + str(l+1))
+                    else:
+                        await j.send('Мафия не выбрала ни одной цели для убийства')
+                elif player_roles[j] == '3' and (player_status[j][0] == 0 or player_status[j][1] != 0):
+                    if sum(vote_results) != 0:
+                        k = vote_results.index(max(vote_results))
+                        if vote_results.count(max(vote_results)) == 1 and player_roles[members[k]] != '8' and player_status[members[k]][1] != 2:
+                            killed.append(str(k+1))
+            don_phase = 1
+        killed = list(set(killed))
+        killed.sort()
+
+    for i in killed:
+        try:
+            player_status[members[int(i)-1]][0] = 0
+        except:
+            pass
     already = [0 for i in range(len(members))]
     ms = await mess.channel.send('Город просыпается ⏰')
     await ms.add_reaction('⏰')
@@ -725,7 +882,8 @@ async def on_message(mess):
         if mess.content == 'Наступает ночь 🌃':
             await night(mess)
     elif mess.guild == None and mess.author != client.user:
-        if mess.author in members and mess.content[0] != '!':
+        global right_to_chat
+        if mess.author in members and mess.content[0] != '!' and mess.author in right_to_chat:
             await night_echo(mess)
     await client.process_commands(mess)
 
