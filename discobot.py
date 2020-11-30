@@ -26,8 +26,10 @@ right = None
 roles_num = {}
 player_roles = {}
 player_status = {}
+roles_value = []
 sequence = [10, 7, [2, 9, 12], 3, [4, 11], 6, 5]
 right_to_chat = []
+right_to_act = []
 sequence_guild_message = ['Вора 🔐', 'Куртизанки 💋', 'Мафии 🕵️', 'Дона мафии 🥃', 'Комиссара 🚔', 'Маньяка 🔪', 'Доктора 💉']
 mafia = []
 police = []
@@ -69,7 +71,7 @@ async def unmute(ctx):
 
 
 @client.command()# ДОРАБОТАТЬ
-async def action(ctx, choice):
+async def a(ctx, choice):
     global right_to_act, killed, mafia_vote, don_phase
     if ctx.author in right_to_act and ctx.guild == None:
         if player_status[ctx.author][5] == 1:
@@ -131,7 +133,7 @@ async def action(ctx, choice):
                 if player_roles[members[choice]] != '8' and player_status[members[choice]][1] != 2:
                     killed.append(str(choice + 1))
             elif player_roles[ctx.author] == '9' and player_status[ctx.author][3] == 1:
-                if member[choice] != ctx.author:
+                if members[choice] != ctx.author:
                     player_status[ctx.author][4] = choice
                 else:
                     await ctx.send('Вам необходимо найти членов мафии. Нельзя выбирать целью себя самого')
@@ -263,7 +265,10 @@ async def timer(time,mess,member,vt):
                         break
                     except:
                         pass
-        await time_message.delete()
+        try:
+            await time_message.delete()
+        except:
+            pass
     elif vt == 1 or vt == 2:
         if vt == 1:
             await mess.channel.send('Кто голосует за игрока  ' + str(member)[:-5]+'?')
@@ -283,7 +288,10 @@ async def timer(time,mess,member,vt):
                         break
                     except:
                         pass
-        await time_message.delete()
+        try:
+            await time_message.delete()
+        except:
+            pass
     elif vt == 3:
         time_message_1 = await mess.channel.send(str(time // 60) + ':' + str((time % 60) // 10) + str((time % 60) % 10))
         mafia_time = []
@@ -303,9 +311,15 @@ async def timer(time,mess,member,vt):
                         break
                     except:
                         pass
-        await time_message_1.delete()
+        try:
+            await time_message_1.delete()
+        except:
+            pass
         for i in mafia_time:
-            await i.delete()
+            try:
+                await i.delete()
+            except:
+                pass
 
 
 @client.event
@@ -346,7 +360,7 @@ async def on_reaction_add(reaction,user):
 
 
 @client.command()
-async def vote(ctx,choice):
+async def v(ctx,choice):
     try:
         if ctx.author.id == right_to_vote.id and type(ctx.channel) != discord.channel.DMChannel:
             global vote_choice
@@ -614,10 +628,10 @@ async def night(mess):
                         await j.send('Вас лишили хода!')
                     await mess.channel.send('Ход ' + sequence_guild_message[i])
                     if i != 3:
-                        await timer(15, mess, [j], 3)
+                        await timer(20, mess, [j], 3)
                     elif i == 3:
                         right_to_chat = mafia.copy()
-                        await timer(10, mess, [j], 3)
+                        await timer(20, mess, [j], 3)
                         if don_phase == 1 and player_status[j][0] != 0 and player_status[j][1] == 0 and vote_results.count(max(vote_results)) == 1:
                             killed.append(str(vote_results.index(max(vote_results))+1))
                     right_to_act.clear()
@@ -675,7 +689,7 @@ async def night(mess):
                     elif player_status[j][1] in [1, 2]:
                         await j.send('Вас лишили хода!')
             await mess.channel.send('Ход ' + sequence_guild_message[i])
-            await timer(10, mess, right_to_act, 3)
+            await timer(30, mess, right_to_act, 3)
             right_to_act.clear()
             vote_results = []
             for j in range(1, len(members)+1):
@@ -689,7 +703,7 @@ async def night(mess):
                                 await j.send(str(vote_results[l]) + ' проголосовал(-о) за убийство ' + str(l+1))
                     else:
                         await j.send('Мафия не выбрала ни одной цели для убийства')
-                elif player_roles[j] == '3' and (player_status[j][0] == 0 or player_status[j][1] != 0):
+                elif player_roles[j] == '3' and (player_status[j][0] == 0 or player_status[j][1] != 0) or list(player_roles.values()).count('3') == 0:
                     if sum(vote_results) != 0:
                         k = vote_results.index(max(vote_results))
                         if vote_results.count(max(vote_results)) == 1 and player_roles[members[k]] != '8' and player_status[members[k]][1] != 2:
