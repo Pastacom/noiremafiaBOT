@@ -5,6 +5,7 @@ import asyncio
 import random
 import time as tm
 
+
 prefix = "!"
 client = commands.Bot(command_prefix=prefix)
 client.remove_command("help")
@@ -26,8 +27,9 @@ right = None
 roles_num = {}
 player_roles = {}
 player_status = {}
-roles_value = []
+roles_multiplier = [1.4, 1.5, 1.75, 1.75, 1.6, 2, 1.4, 1, 1.8, 1.2, 1.6, 1.5]
 sequence = [10, 7, [2, 9, 12], 3, [4, 11], 6, 5]
+gamers = {}
 right_to_chat = []
 right_to_act = []
 sequence_guild_message = ['Вора 🔐', 'Куртизанки 💋', 'Мафии 🕵️', 'Дона мафии 🥃', 'Комиссара 🚔', 'Маньяка 🔪', 'Доктора 💉']
@@ -64,14 +66,18 @@ async def on_ready():
 async def unmute(ctx):
     await ctx.author.edit(mute=False)
 
+@client.command()
+async def test(ctx):
+    await ctx.send(ctx.author.id)
+
 #-------------------Main body-----------------------
 
 
 #---------------Additional functions----------------
 
 
-@client.command()# ДОРАБОТАТЬ
-async def a(ctx, choice):
+@client.command()
+async def action(ctx, choice):
     global right_to_act, killed, mafia_vote, don_phase
     if ctx.author in right_to_act and ctx.guild == None:
         if player_status[ctx.author][5] == 1:
@@ -192,19 +198,66 @@ async def night_echo(mess):
                 await member.send(str(mess.author)[:-5] + ': ' + mess.content)
 
 
+async def after_game(mess):
+    sd = ''
+    ft = ''
+    i = 0
+    for member in player_roles:
+        i += 1
+        x = str(roles_definition[int(player_roles[member])])
+        ft += str(i) + ') ' + str(member)[:-5] + '\n'
+        sd += str(i) + ') ' + x + '\n'
+    emb = discord.Embed(title='Роли игроков:', colour=discord.Color.darker_grey())
+    emb.add_field(name='Игрок', value=ft, inline=True)
+    emb.add_field(name='Роль', value=sd, inline=True)
+    await mess.channel.send(embed=emb)
+
+
+async def preparation_of_results(mode):
+    for member in player_status:
+        if mode == 1:
+            if player_roles[member] == '6':
+                gamers[str(member.id)] = [1, roles_multiplier[int(player_roles[member])-1], player_status[member][0]]
+            else:
+                gamers[str(member.id)] = [0, roles_multiplier[int(player_roles[member]) - 1], player_status[member][0]]
+        elif mode == 2:
+            if int(player_roles[member]) in [2, 3, 9, 10, 12]:
+                gamers[str(member.id)] = [1, roles_multiplier[int(player_roles[member])-1], player_status[member][0]]
+            else:
+                gamers[str(member.id)] = [0, roles_multiplier[int(player_roles[member]) - 1], player_status[member][0]]
+        elif mode == 3:
+            if int(player_roles[member]) in [1, 4, 5, 7, 8, 11]:
+                gamers[str(member.id)] = [1, roles_multiplier[int(player_roles[member]) - 1], player_status[member][0]]
+            else:
+                gamers[str(member.id)] = [0, roles_multiplier[int(player_roles[member]) - 1], player_status[member][0]]
+        else:
+            gamers[str(member.id)] = [0, roles_multiplier[int(player_roles[member]) - 1], player_status[member][0]]
+    from BD import endgame
+    endgame(gamers)
+
+
+
 async def win_condition(message):
     global red, black, two_faced, maniac
     if maniac > 0 and red + black + two_faced == 0:
         await message.channel.send('Игра окончена! Победа маньяка 🔪')
+        await preparation_of_results(1)
+        await after_game(message)
         return True
     elif maniac == 0 and ((black >= red and black > 0) or (red + black == 0 and two_faced > 0)):
         await message.channel.send('Игра окончена! Победа мафии 🕵️')
+        await preparation_of_results(2)
+        await after_game(message)
         return True
     elif maniac == 0 and black == 0 and red > 0:
         await message.channel.send('Игра окончена! Победа мирного города 👥')
+        await preparation_of_results(3)
+        await after_game(message)
         return True
     elif maniac + black + two_faced + red == 0:
         await message.channel.send('Игра окончена! Ничья. В городе не осталось живых ☠')
+        await preparation_of_results(4)
+        await after_game(message)
         return True
 
 
@@ -358,9 +411,44 @@ async def on_reaction_add(reaction,user):
                 await reaction.message.delete()
                 await reaction.message.channel.send('Наступает день 🌇')
 
+# SHORTCUTS
+@client.command()
+async def v(ctx, choice):
+    await vote(ctx, choice)
+
 
 @client.command()
-async def v(ctx,choice):
+async def a(ctx, choice):
+    await action(ctx, choice)
+
+
+@client.command()
+async def s(ctx):
+    await start(ctx)
+
+
+@client.command()
+async def ch(ctx):
+    await change(ctx)
+
+
+@client.command()
+async def c(ctx):
+    await create(ctx)
+
+
+@client.command()
+async def p(ctx):
+    await pool(ctx)
+
+
+@client.command()
+async def g(ctx):
+    await give(ctx)
+# SHORTCUTSв
+
+@client.command()
+async def vote(ctx, choice):
     try:
         if ctx.author.id == right_to_vote.id and type(ctx.channel) != discord.channel.DMChannel:
             global vote_choice
@@ -376,7 +464,7 @@ async def v(ctx,choice):
             elif player_status[members[choice-1]][0] == 0:
                 await ctx.send('Этот игрок уже убит. Выберите другого.')
             else:
-                vote_choice=choice
+                vote_choice = choice
                 await ctx.send('Принято!')
     except:
         pass
@@ -632,7 +720,7 @@ async def night(mess):
                     elif i == 3:
                         right_to_chat = mafia.copy()
                         await timer(20, mess, [j], 3)
-                        if don_phase == 1 and player_status[j][0] != 0 and player_status[j][1] == 0 and vote_results.count(max(vote_results)) == 1:
+                        if don_phase == 1 and player_status[j][0] != 0 and player_status[j][1] == 0 and vote_results.count(max(vote_results)) == 1 and sum(vote_results) != 0:
                             killed.append(str(vote_results.index(max(vote_results))+1))
                     right_to_act.clear()
                     right_to_chat.clear()
@@ -689,7 +777,7 @@ async def night(mess):
                     elif player_status[j][1] in [1, 2]:
                         await j.send('Вас лишили хода!')
             await mess.channel.send('Ход ' + sequence_guild_message[i])
-            await timer(30, mess, right_to_act, 3)
+            await timer(2, mess, right_to_act, 3)
             right_to_act.clear()
             vote_results = []
             for j in range(1, len(members)+1):
@@ -725,6 +813,9 @@ async def night(mess):
     for i in list(player_status.values()):
         if i[0] != 0:
             nm += 1
+    if nm == 0:
+        await ms.delete()
+        await mess.channel.send('Наступает день 🌇')
 
 
 @client.command()
