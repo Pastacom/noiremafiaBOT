@@ -1,6 +1,7 @@
 import mysql.connector
 from mysql.connector import Error
 import math
+import json
 
 
 def create_connection(host_name, user_name, user_password, db_name):
@@ -17,7 +18,7 @@ def create_connection(host_name, user_name, user_password, db_name):
         print(f"The error '{e}' occurred")
 
     return connection
-a = create_connection('betkill.beget.tech', 'betkill_bd_auto', 'Ubuntu18.04', 'betkill_bd_auto')
+
 
 
 def execute_read_query(a, query, var):
@@ -56,7 +57,76 @@ def rp_additon(wl, rv, rp, avrp, alive):
     else:
         return str(change+rp)
 
+
+def get_settings(gamer):
+    a = create_connection('betkill.beget.tech', 'betkill_bd_auto', 'Ubuntu18.04', 'betkill_bd_auto')
+    select_users = "SELECT settings FROM users WHERE id_discord = %s"
+    users = execute_read_query(a, select_users, (gamer,))
+    for user in users:
+        user = list(user)[0]
+        if user != None:
+            user = json.loads(user)
+        else:
+            user = {'mode': 'auto', 'mute': 'on', 'time': [60, 45, 15, 60, 40, 90]}
+    return user
+
+
+def change_settings(gamer, setgs):
+    a = create_connection('betkill.beget.tech', 'betkill_bd_auto', 'Ubuntu18.04', 'betkill_bd_auto')
+    setgs = json.dumps(setgs)
+    update_post_description = """
+                        UPDATE
+                         users
+                        SET
+                         settings = %s
+                        WHERE
+                         id_discord = %s
+                        """
+    execute_query(a, update_post_description, (setgs, gamer))
+
+def save_set(gamer, name, set):
+    a = create_connection('betkill.beget.tech', 'betkill_bd_auto', 'Ubuntu18.04', 'betkill_bd_auto')
+    select_users = "SELECT sets FROM users WHERE id_discord = %s"
+    users = execute_read_query(a, select_users, (gamer,))
+    for user in users:
+        user = list(user)[0]
+        if user != None:
+            user = json.loads(user)
+        else:
+            user = {}
+        user[name] = set
+        user = json.dumps(user)
+        update_post_description = """
+                    UPDATE
+                     users
+                    SET
+                     sets = %s
+                    WHERE
+                     id_discord = %s
+                    """
+        execute_query(a, update_post_description, (user, gamer))
+
+
+def load_set(gamer, name):
+    a = create_connection('betkill.beget.tech', 'betkill_bd_auto', 'Ubuntu18.04', 'betkill_bd_auto')
+    select_users = "SELECT sets FROM users WHERE id_discord = %s"
+    users = execute_read_query(a, select_users, (gamer,))
+    for user in users:
+        user = list(user)[0]
+        if user != None:
+            user = json.loads(user)
+        else:
+            user = {}
+            return user
+        try:
+            return user[name]
+        except KeyError:
+            user = {}
+            return user
+
+
 def endgame(gamers):
+    a = create_connection('betkill.beget.tech', 'betkill_bd_auto', 'Ubuntu18.04', 'betkill_bd_auto')
     user_rp = []
     for gamer in list(gamers.keys()):
         select_users = "SELECT rp FROM users WHERE id_discord = %s"
@@ -112,3 +182,29 @@ def endgame(gamers):
                  id_discord = %s
                 """
             execute_query(a, update_post_description, (user+1, gamer))
+        select_users = "SELECT {} FROM users WHERE id_discord = %s".format(gamers[gamer][3])
+        users = execute_read_query(a, select_users, (gamer,))
+        for user in users:
+            user = list(user)[0]
+            if user != None:
+                user = json.loads(user)
+            else:
+                user = {}
+                user['stats'] = [0, 0, 0, 0]
+        user['stats'][0] += 1
+        if gamers[gamer][0] == 1:
+            user['stats'][1] += 1
+        else:
+            user['stats'][2] += 1
+        user['stats'][3] = round(user['stats'][1]/user['stats'][0]*100, 2)
+        user = json.dumps(user)
+        update_post_description = """
+            UPDATE
+             users
+            SET
+             {} = %s
+            WHERE
+             id_discord = %s
+            """.format(gamers[gamer][3])
+        execute_query(a, update_post_description, (user, gamer))
+
