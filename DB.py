@@ -13,12 +13,10 @@ def create_connection(host_name, user_name, user_password, db_name):
             passwd=user_password,
             database=db_name
         )
-        print("Connection to MySQL DB successful")
     except Error as e:
         print(f"The error '{e}' occurred")
 
     return connection
-
 
 
 def execute_read_query(a, query, var):
@@ -84,6 +82,35 @@ def change_settings(gamer, setgs):
                         """
     execute_query(a, update_post_description, (setgs, gamer))
 
+
+def change_set(gamer, name, new_name, set):
+    a = create_connection('betkill.beget.tech', 'betkill_bd_auto', 'Ubuntu18.04', 'betkill_bd_auto')
+    select_users = "SELECT sets FROM users WHERE id_discord = %s"
+    users = execute_read_query(a, select_users, (gamer,))
+    for user in users:
+        user = list(user)[0]
+        if user != None:
+            user = json.loads(user)
+        else:
+            user = {}
+        try:
+            del user[name]
+        except KeyError:
+            return
+        user[new_name] = set
+        user = json.dumps(user)
+        update_post_description = """
+                        UPDATE
+                         users
+                        SET
+                         sets = %s
+                        WHERE
+                         id_discord = %s
+                        """
+        execute_query(a, update_post_description, (user, gamer))
+
+
+
 def save_set(gamer, name, set):
     a = create_connection('betkill.beget.tech', 'betkill_bd_auto', 'Ubuntu18.04', 'betkill_bd_auto')
     select_users = "SELECT sets FROM users WHERE id_discord = %s"
@@ -123,6 +150,19 @@ def load_set(gamer, name):
         except KeyError:
             user = {}
             return user
+
+
+def get_all_sets(gamer):
+    a = create_connection('betkill.beget.tech', 'betkill_bd_auto', 'Ubuntu18.04', 'betkill_bd_auto')
+    select_users = "SELECT sets FROM users WHERE id_discord = %s"
+    users = execute_read_query(a, select_users, (gamer,))
+    for user in users:
+        user = list(user)[0]
+        if user != None:
+            user = json.loads(user)
+        else:
+            user = {}
+        return user
 
 
 def endgame(gamers):
