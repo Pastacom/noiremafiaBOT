@@ -95,7 +95,10 @@ async def unmute(mess, member):
 async def mute(mess, member):
     if game_sessions[mess.channel.id].game_settings['mute'] == 'on':
         await member.edit(mute=True)
-
+@client.command()
+async def test(ctx):
+    l = ctx.channel.id
+    print(await ctx.channel.get_message(l))
 
 @client.command()
 async def help(ctx):
@@ -112,6 +115,7 @@ async def help(ctx):
     emb.add_field(name="!action (!a)", value="Пишется в личные сообщения боту, когда он объявляет о начале вашего хода в ночное время. После команды следует указать номер игрока, указывая цель вашего хода.\n\nПримеры:\nИграя за Мафию вы хотите проголосовать за игрока под номером №7: !action 7\nИграя за Комиссара вы хотите проверить игрока под номером №3: !action 3\n\n_", inline=False)
     emb.add_field(name="!vote (!v)", value="Пишется в чат, где началась ваша игра, после объявления вашего хода, в дневное время. После команды следует указать номер игрока через пробел, чтобы выставить этого игрока на дневное голосование.\n\nПример:\nВы подозреваете игрока №5 и хотите выставить его на голосование: !vote 5", inline=False)
     await user.send(embed=emb)
+    await ctx.send("Список команд был отправлен вам в личные сообщения.")
 #-------------------Main body-----------------------
 
 
@@ -234,13 +238,13 @@ async def status_maker(i, mess):
 
 
 async def night_echo(mess):
-    if game_sessions[mess.channel.id].player_status[mess.author][2] > 1 and game_sessions[mess.channel.id].player_status[mess.author][1] == 0:
-        for member in game_sessions[mess.channel.id].police:
-            if member != mess.author and game_sessions[mess.channel.id].player_status[member][2] > 0 and game_sessions[mess.channel.id].player_status[member][1] == 0:
+    if game_sessions[night_ids[mess.channel.id]].player_status[mess.author][2] > 1 and game_sessions[night_ids[mess.channel.id]].player_status[mess.author][1] == 0:
+        for member in game_sessions[night_ids[mess.channel.id]].police:
+            if member != mess.author and game_sessions[night_ids[mess.channel.id]].player_status[member][2] > 0 and game_sessions[night_ids[mess.channel.id]].player_status[member][1] == 0:
                 await member.send(str(mess.author)[:-5] + ': ' + mess.content)
-    elif game_sessions[mess.channel.id].player_status[mess.author][3] > 2 and game_sessions[mess.channel.id].player_status[mess.author][1] == 0:
-        for member in game_sessions[mess.channel.id].mafia:
-            if member != mess.author and game_sessions[mess.channel.id].player_status[member][3] > 1 and game_sessions[mess.channel.id].player_status[member][1] == 0:
+    elif game_sessions[night_ids[mess.channel.id]].player_status[mess.author][3] > 2 and game_sessions[night_ids[mess.channel.id]].player_status[mess.author][1] == 0:
+        for member in game_sessions[night_ids[mess.channel.id]].mafia:
+            if member != mess.author and game_sessions[night_ids[mess.channel.id]].player_status[member][3] > 1 and game_sessions[night_ids[mess.channel.id]].player_status[member][1] == 0:
                 await member.send(str(mess.author)[:-5] + ': ' + mess.content)
 
 
@@ -415,12 +419,13 @@ async def on_reaction_add(reaction, user):
                 await user.edit(nick=user.name + ' ✅')
             except:
                 None
-            await reaction.message.remove_reaction('✅', user)
             if sum(list(game_sessions[reaction.message.channel.id].already.values())) == len(game_sessions[reaction.message.channel.id].members):
                 await reaction.message.delete()
                 await rename(reaction.message)
                 await reaction.message.channel.send('💠 ИГРА НАЧАЛАСЬ 💠')
                 game_sessions[reaction.message.channel.id].running = True
+            else:
+                await reaction.message.remove_reaction('✅', user)
         elif reaction.emoji == '❌' and user != reaction.message.author and game_sessions[
             reaction.message.channel.id].vn == 5 and user in game_sessions[reaction.message.channel.id].members:
             game_sessions[reaction.message.channel.id].already[
@@ -1150,7 +1155,7 @@ async def save(ctx, name=None):
                         save_set(ctx.author.id, name, game_sessions[ctx.channel.id].roles_num)
                         await ctx.send('Список под названием {} был перезаписан'.format(name))
                     else:
-                        await ctx.send('Максимум можно сохранить 5 списоков. Напишите название списка, который вы хотите заменить, или !cancel для отмены')
+                        await ctx.send('Максимум можно сохранить 5 списков. Напишите название списка, который вы хотите заменить, или !cancel для отмены')
                         await sets(ctx)
 
                         def check(m):
@@ -1218,7 +1223,7 @@ async def start(ctx, name=None):
             game_sessions[ctx.channel.id].roles_num = new_set
             del new_set
     elif name == 'cl':
-        await gencl(ctx)
+        await genclassic(ctx)
     elif name == 'ex':
         await genex(ctx)
     if type(ctx.channel) != discord.channel.DMChannel:
