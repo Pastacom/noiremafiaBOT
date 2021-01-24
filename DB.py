@@ -60,6 +60,8 @@ def get_settings(gamer):
     a = create_connection('betkill.beget.tech', 'betkill_bd_auto', 'Ubuntu18.04', 'betkill_bd_auto')
     select_users = "SELECT settings FROM users WHERE id_discord = %s"
     users = execute_read_query(a, select_users, (gamer,))
+    if users == []:
+        user = {'mode': 'auto', 'mute': 'on', 'time': [60, 45, 15, 60, 40, 90]}
     for user in users:
         user = list(user)[0]
         if user != None:
@@ -171,11 +173,12 @@ def endgame(gamers):
     for gamer in list(gamers.keys()):
         select_users = "SELECT rp FROM users WHERE id_discord = %s"
         users = execute_read_query(a, select_users, (gamer,))
+        if users == []:
+            continue
         for user in users:
             user = str(user)
             user = user[1:user.find(',')]
             user_rp.append(int(user))
-    for gamer in list(gamers.keys()):
         select_users = "SELECT rp FROM users WHERE id_discord = %s"
         users = execute_read_query(a, select_users, (gamer,))
         for user in users:
@@ -191,7 +194,6 @@ def endgame(gamers):
          id_discord = %s
         """
         execute_query(a, update_post_description, (rating, gamer))
-    for gamer in list(gamers.keys()):
         if gamers[gamer][0] == 1:
             select_users = "SELECT win FROM users WHERE id_discord = %s"
             users = execute_read_query(a, select_users, (gamer,))
