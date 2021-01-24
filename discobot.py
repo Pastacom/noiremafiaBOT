@@ -78,7 +78,6 @@ class Settings:
 
 #------------------Bot is online-------------------
 
-
 @client.event
 async def on_ready():
     print("Bot is online.")
@@ -89,16 +88,19 @@ async def on_ready():
 
 async def unmute(mess, member):
     if game_sessions[mess.channel.id].game_settings['mute'] == 'on':
-        await member.edit(mute=False)
+        try:
+            await member.edit(mute=False)
+        except:
+            pass
 
 
 async def mute(mess, member):
     if game_sessions[mess.channel.id].game_settings['mute'] == 'on':
-        await member.edit(mute=True)
-@client.command()
-async def test(ctx):
-    l = ctx.channel.id
-    print(await ctx.channel.get_message(l))
+        try:
+            await member.edit(mute=True)
+        except:
+            pass
+
 
 @client.command()
 async def help(ctx):
@@ -325,7 +327,7 @@ async def reduction_role_condition(i, mess):
 
 async def timer(time,mess,member,vt):
     if vt == 0:
-        await mess.channel.send('Ваш ход ' + str(member)[:-5])
+        message = await mess.channel.send('Ваш ход ' + str(member)[:-5])
         time_message = await mess.channel.send(str(time // 60) + ':' + str((time % 60) // 10) + str((time % 60) % 10))
         await time_message.add_reaction('⛔')
         for i in range(time - 1, -1, -1):
@@ -337,9 +339,13 @@ async def timer(time,mess,member,vt):
             await time_message.delete()
         except:
             pass
+        try:
+            await message.delete()
+        except:
+            pass
     elif vt == 1 or vt == 2:
         if vt == 1:
-            await mess.channel.send('Кто голосует за игрока  ' + str(member)[:-5]+'?')
+            message = await mess.channel.send('Кто голосует за игрока  ' + str(member)[:-5]+'?')
             time_message = await mess.channel.send(str(time // 60) + ':' + str((time % 60) // 10) + str((time % 60) % 10))
             await time_message.add_reaction('✅')
         elif vt == 2:
@@ -351,6 +357,10 @@ async def timer(time,mess,member,vt):
             await time_message.edit(content=str(i // 60) + ':' + str((i % 60) // 10) + str((i % 60) % 10))
         try:
             await time_message.delete()
+        except:
+            pass
+        try:
+            await message.delete()
         except:
             pass
     elif vt == 3:
@@ -422,7 +432,7 @@ async def on_reaction_add(reaction, user):
             if sum(list(game_sessions[reaction.message.channel.id].already.values())) == len(game_sessions[reaction.message.channel.id].members):
                 await reaction.message.delete()
                 await rename(reaction.message)
-                await reaction.message.channel.send('💠 ИГРА НАЧАЛАСЬ 💠')
+                await reaction.message.channel.send('💠 **ИГРА НАЧАЛАСЬ** 💠')
                 game_sessions[reaction.message.channel.id].running = True
             else:
                 await reaction.message.remove_reaction('✅', user)
@@ -585,7 +595,7 @@ async def day(mess):
     if game_sessions[mess.channel.id].killed != []:
         await mess.channel.send('Ночью были убиты игроки под номерами: ' + (', ').join(game_sessions[mess.channel.id].killed))
     else:
-        await mess.channel.send('Ночью никто не был убит')
+        await mess.channel.send('Ночью никто не был убит 🚫')
     game_sessions[mess.channel.id].vn = 0
     for person in game_sessions[mess.channel.id].killed:
         await reduction_role_condition(int(person)-1, mess)
@@ -1281,7 +1291,7 @@ async def start(ctx, name=None):
 @client.event
 async def on_message(mess):
     if mess.author == client.user and mess.guild != None:
-        if mess.content == '💠 ИГРА НАЧАЛАСЬ 💠':
+        if mess.content == '💠 **ИГРА НАЧАЛАСЬ** 💠':
             await meeting_day(mess)
         if mess.content == 'Наступает день 🌇':
             await day(mess)
