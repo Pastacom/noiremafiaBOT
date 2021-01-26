@@ -327,7 +327,7 @@ async def reduction_role_condition(i, mess):
 
 async def timer(time,mess,member,vt):
     if vt == 0:
-        message = await mess.channel.send('Ваш ход ' + str(member)[:-5])
+        message = await mess.channel.send('Ваш ход ' + str(member)[:-5] + ' (Нажми ⛔, чтобы закончить свой ход)')
         time_message = await mess.channel.send(str(time // 60) + ':' + str((time % 60) // 10) + str((time % 60) % 10))
         await time_message.add_reaction('⛔')
         for i in range(time - 1, -1, -1):
@@ -345,7 +345,7 @@ async def timer(time,mess,member,vt):
             pass
     elif vt == 1 or vt == 2:
         if vt == 1:
-            message = await mess.channel.send('Кто голосует за игрока  ' + str(member)[:-5]+'?')
+            message = await mess.channel.send('Кто голосует за игрока  ' + str(member)[:-5]+'?' + ' (Нажми ✅, чтобы проголосовать против игрока)')
             time_message = await mess.channel.send(str(time // 60) + ':' + str((time % 60) // 10) + str((time % 60) % 10))
             await time_message.add_reaction('✅')
         elif vt == 2:
@@ -413,7 +413,7 @@ async def on_reaction_add(reaction, user):
                 game_sessions[reaction.message.channel.id].count -= 1
                 if game_sessions[reaction.message.channel.id].count == 0:
                     await reaction.message.delete()
-                    await reaction.message.channel.send('Наступает ночь 🌃')
+                    await reaction.message.channel.send('Наступает ночь 🌃 (Просьба игрокам с активными ролями перейти в личные сообщения с ботом)')
         elif reaction.emoji == '⏰' and user != reaction.message.author and user in game_sessions[reaction.message.channel.id].members:
             if game_sessions[reaction.message.channel.id].already[game_sessions[reaction.message.channel.id].members.index(user)] == 0 and game_sessions[reaction.message.channel.id].player_status[user][0] != 0:
                 game_sessions[reaction.message.channel.id].already[game_sessions[reaction.message.channel.id].members.index(user)] = 1
@@ -583,7 +583,7 @@ async def meeting_day(mess):
         await timer(game_sessions[mess.channel.id].game_settings['time'][0], mess, member, 0)
         await mute(mess, member)
     game_sessions[mess.channel.id].already = [0 for i in range(len(game_sessions[mess.channel.id].members))]
-    ms = await mess.channel.send('Город засыпает 💤')
+    ms = await mess.channel.send('Город засыпает 💤 (Выключите камеру и после этого нажмите 💤, чтобы подтвердить готовность к ночи)')
     await ms.add_reaction('💤')
     game_sessions[mess.channel.id].count = 0
     for i in list(game_sessions[mess.channel.id].player_status.values()):
@@ -613,7 +613,7 @@ async def day(mess):
                 pass
         del game_sessions[mess.channel.id]
         return
-    await mess.channel.send('Начинается обсуждение и выставление кандидатур на голосование 🗣️')
+    await mess.channel.send('Начинается обсуждение и выставление кандидатур на голосование 🗣️ (Напишите !vote номер игрока в свой ход, чтобы выставить его на голосование)')
     game_sessions[mess.channel.id].voted = []
     game_sessions[mess.channel.id].votes = [0 for i in range(len(game_sessions[mess.channel.id].members))]
     game_sessions[mess.channel.id].already = [0 for i in range(len(game_sessions[mess.channel.id].members))]
@@ -637,7 +637,7 @@ async def day(mess):
     if len(game_sessions[mess.channel.id].voted) == 0:
         await mess.channel.send('Было принято решение никого не сажать в тюрьму 🚫')
         game_sessions[mess.channel.id].already = [0 for i in range(len(game_sessions[mess.channel.id].members))]
-        ms = await mess.channel.send('Город засыпает 💤')
+        ms = await mess.channel.send('Город засыпает 💤 (Выключите камеру и после этого нажмите 💤, чтобы подтвердить готовность к ночи)')
         await ms.add_reaction('💤')
         game_sessions[mess.channel.id].count = 0
         for i in list(game_sessions[mess.channel.id].player_status.values()):
@@ -751,7 +751,7 @@ async def day(mess):
                     if game_sessions[mess.channel.id].guilty[i] != max(game_sessions[mess.channel.id].guilty.values()):
                         del game_sessions[mess.channel.id].guilty[i]
                 await mess.channel.send(
-                    'По-прежнему остались игроки с одинаковым количеством голосов, поэтому принимается решение: выгнать или оставить всех\n✅ - выгнать, ⛔ - оставить')
+                    'По-прежнему остались игроки с одинаковым количеством голосов, поэтому принимается решение: выгнать или оставить всех\nНажмите ✅, если голосуете за \"выгнать\", Нажмите ⛔, если голосуете за \"оставить\"')
                 game_sessions[mess.channel.id].count = 0
                 game_sessions[mess.channel.id].vn = 3
                 game_sessions[mess.channel.id].right = None
@@ -788,7 +788,7 @@ async def day(mess):
                 else:
                     await mess.channel.send('Было принято решение никого не сажать в тюрьму 🚫')
         game_sessions[mess.channel.id].already = [0 for i in range(len(game_sessions[mess.channel.id].members))]
-        ms = await mess.channel.send('Город засыпает 💤')
+        ms = await mess.channel.send('Город засыпает 💤 (Выключите камеру и после этого нажмите 💤, чтобы подтвердить готовность к ночи)')
         await ms.add_reaction('💤')
         game_sessions[mess.channel.id].count = 0
         for i in list(game_sessions[mess.channel.id].player_status.values()):
@@ -828,7 +828,8 @@ async def night(mess):
                 if int(game_sessions[mess.channel.id].player_roles[j]) == sequence[i]:
                     if game_sessions[mess.channel.id].player_status[j][0] != 0 and game_sessions[mess.channel.id].player_status[j][1] == 0:
                         game_sessions[mess.channel.id].right_to_act = [j]
-                        await j.send('⚠️ ВАШ ХОД ⚠️')
+                        await j.send('⚠️ **ВАШ ХОД** ⚠️')
+                        await j.send('Чтобы выбрать цель для вашего ход, напишите !action номер игрока')
                     elif game_sessions[mess.channel.id].player_status[j][1] in [1, 2]:
                         await j.send('Вас лишили хода!')
                     await mess.channel.send('Ход ' + sequence_guild_message[i])
@@ -847,7 +848,8 @@ async def night(mess):
                 if int(game_sessions[mess.channel.id].player_roles[j]) == 4 and game_sessions[mess.channel.id].player_status[j][0] != 0:
                     if game_sessions[mess.channel.id].player_status[j][1] == 0:
                         game_sessions[mess.channel.id].right_to_act = [j]
-                        await j.send('⚠️ ВАШ ХОД ⚠️')
+                        await j.send('⚠️ **ВАШ ХОД** ⚠️')
+                        await j.send('Чтобы выбрать цель для вашего ход, напишите !action номер игрока')
                     elif game_sessions[mess.channel.id].player_status[j][1] in [1, 2]:
                         await j.send('Вас лишили хода!')
                     await mess.channel.send('Ход ' + sequence_guild_message[i])
@@ -857,7 +859,8 @@ async def night(mess):
                 elif int(game_sessions[mess.channel.id].player_roles[j]) == 11 and game_sessions[mess.channel.id].player_status[j][0] != 0:
                     if game_sessions[mess.channel.id].player_status[j][1] == 0:
                         game_sessions[mess.channel.id].right_to_act = [j]
-                        await j.send('⚠️ ВАШ ХОД ⚠️')
+                        await j.send('⚠️ **ВАШ ХОД** ⚠️')
+                        await j.send('Чтобы выбрать цель для вашего ход, напишите !action номер игрока')
                     elif game_sessions[mess.channel.id].player_status[j][1] in [1, 2]:
                         await j.send('Вас лишили хода!')
                     await mess.channel.send('Ход ' + sequence_guild_message[i])
@@ -873,7 +876,8 @@ async def night(mess):
                 if int(game_sessions[mess.channel.id].player_roles[j]) == 9 and game_sessions[mess.channel.id].player_status[j][0] != 0:
                     if game_sessions[mess.channel.id].player_status[j][1] == 0:
                         game_sessions[mess.channel.id].right_to_act.append(j)
-                        await j.send('⚠️ ВАШ ХОД ⚠️')
+                        await j.send('⚠️ **ВАШ ХОД** ⚠️')
+                        await j.send('Чтобы выбрать цель для вашего ход, напишите !action номер игрока')
                     elif game_sessions[mess.channel.id].player_status[j][1] in [1, 2]:
                         await j.send('Вас лишили хода!')
                 elif int(game_sessions[mess.channel.id].player_roles[j]) == 12 and game_sessions[mess.channel.id].player_status[j][0] != 0:
@@ -883,13 +887,15 @@ async def night(mess):
                             count += 1
                     if game_sessions[mess.channel.id].player_status[j][1] == 0 and count == 0:
                         game_sessions[mess.channel.id].right_to_act.append(j)
-                        await j.send('⚠️ ВАШ ХОД ⚠️')
+                        await j.send('⚠️ **ВАШ ХОД** ⚠️')
+                        await j.send('Чтобы выбрать цель для вашего ход, напишите !action номер игрока')
                     elif game_sessions[mess.channel.id].player_status[j][1] in [1, 2]:
                         await j.send('Вас лишили хода!')
                 elif int(game_sessions[mess.channel.id].player_roles[j]) == 2 and game_sessions[mess.channel.id].player_status[j][0] != 0:
                     if game_sessions[mess.channel.id].player_status[j][1] == 0:
                         game_sessions[mess.channel.id].right_to_act.append(j)
-                        await j.send('⚠️ ВАШ ХОД ⚠️')
+                        await j.send('⚠️ **ВАШ ХОД** ⚠️')
+                        await j.send('Чтобы выбрать цель для вашего ход, напишите !action номер игрока')
                     elif game_sessions[mess.channel.id].player_status[j][1] in [1, 2]:
                         await j.send('Вас лишили хода!')
             k = list(game_sessions[mess.channel.id].player_roles.values())
@@ -924,7 +930,7 @@ async def night(mess):
         except:
             pass
     game_sessions[mess.channel.id].already = [0 for i in range(len(game_sessions[mess.channel.id].members))]
-    ms = await mess.channel.send('Город просыпается ⏰')
+    ms = await mess.channel.send('Город просыпается ⏰ (Включите камеру и после этого нажмите ⏰, чтобы подтвердить готовность ко дню)')
     await ms.add_reaction('⏰')
     game_sessions[mess.channel.id].right_to_act.clear()
     game_sessions[mess.channel.id].count = 0
@@ -1063,14 +1069,13 @@ async def create(ctx):
         game_sessions[ctx.channel.id] = Game()
     else:
         await ctx.send('В данном канале уже создается список или идет игра')
-        return 
+        return
     game_sessions[ctx.channel.id].game_settings = get_settings(ctx.author.id)
     if game_sessions[ctx.channel.id].game_settings['mode'] == "non-auto" and type(ctx.channel) != discord.channel.DMChannel:
         game_sessions[ctx.channel.id].roles_num = roles_num_b.copy()
 
         def check(m):
             return m.author.id == ctx.author.id
-
         game_sessions[ctx.channel.id].members = ctx.message.author.voice.channel.members
         for member in game_sessions[ctx.channel.id].members:
             if member.bot:
@@ -1091,18 +1096,18 @@ async def create(ctx):
                        + "9. Двуликий " + "\n" + "10. Вор " + "\n" + "11. Сержант " + "\n" + "12. Оборотень")
         if await add_role(len(game_sessions[ctx.channel.id].members), ctx) == True:
             return
-        await ctx.send("Начало игры. Роли игроков в игре:" + "\n\n" + 
-                       "Мирных жителей: " + str(game_sessions[ctx.channel.id].roles_num['1']) + "\n" + 
-                       "Мафий: " + str(game_sessions[ctx.channel.id].roles_num['2']) + "\n" + 
-                       "Донов мафии: " + str(game_sessions[ctx.channel.id].roles_num['3']) + "\n" + 
-                       "Комиссаров: " + str(game_sessions[ctx.channel.id].roles_num['4']) + "\n" + 
-                       "Докторов: " + str(game_sessions[ctx.channel.id].roles_num['5']) + "\n" + 
-                       "Маньяков: " + str(game_sessions[ctx.channel.id].roles_num['6']) + "\n" + 
-                       "Куртизанок: " + str(game_sessions[ctx.channel.id].roles_num['7']) + "\n" + 
-                       "Бессмертных: " + str(game_sessions[ctx.channel.id].roles_num['8']) + "\n" + 
-                       "Двуликих: " + str(game_sessions[ctx.channel.id].roles_num['9']) + "\n" + 
-                       "Воров: " + str(game_sessions[ctx.channel.id].roles_num['10']) + "\n" + 
-                       "Сержантов: " + str(game_sessions[ctx.channel.id].roles_num['11']) + "\n" + 
+        await ctx.send("Начало игры. Роли игроков в игре:" + "\n\n" +
+                       "Мирных жителей: " + str(game_sessions[ctx.channel.id].roles_num['1']) + "\n" +
+                       "Мафий: " + str(game_sessions[ctx.channel.id].roles_num['2']) + "\n" +
+                       "Донов мафии: " + str(game_sessions[ctx.channel.id].roles_num['3']) + "\n" +
+                       "Комиссаров: " + str(game_sessions[ctx.channel.id].roles_num['4']) + "\n" +
+                       "Докторов: " + str(game_sessions[ctx.channel.id].roles_num['5']) + "\n" +
+                       "Маньяков: " + str(game_sessions[ctx.channel.id].roles_num['6']) + "\n" +
+                       "Куртизанок: " + str(game_sessions[ctx.channel.id].roles_num['7']) + "\n" +
+                       "Бессмертных: " + str(game_sessions[ctx.channel.id].roles_num['8']) + "\n" +
+                       "Двуликих: " + str(game_sessions[ctx.channel.id].roles_num['9']) + "\n" +
+                       "Воров: " + str(game_sessions[ctx.channel.id].roles_num['10']) + "\n" +
+                       "Сержантов: " + str(game_sessions[ctx.channel.id].roles_num['11']) + "\n" +
                        "Оборотней: " + str(game_sessions[ctx.channel.id].roles_num['12']))
     elif game_sessions[ctx.channel.id].game_settings['mode'] == 'auto' and type(ctx.channel) != discord.channel.DMChannel:
         game_sessions[ctx.channel.id].roles_num = roles_num_b.copy()
@@ -1112,8 +1117,8 @@ async def create(ctx):
                 game_sessions[ctx.channel.id].members.remove(member)
         await ctx.send("Задайте роли.")
         await ctx.send(
-            "1. Мирный житель " + "\n" + "2. Мафия " + "\n" + "3. Дон мафии " + "\n" + "4. Комиссар " + "\n" + 
-            "5. Доктор " + "\n" + "6. Маньяк " + "\n" + "7. Куртизанка " + "\n" + "8. Бессмертный " + "\n" + 
+            "1. Мирный житель " + "\n" + "2. Мафия " + "\n" + "3. Дон мафии " + "\n" + "4. Комиссар " + "\n" +
+            "5. Доктор " + "\n" + "6. Маньяк " + "\n" + "7. Куртизанка " + "\n" + "8. Бессмертный " + "\n" +
             "9. Двуликий " + "\n" + "10. Вор " + "\n" + "11. Сержант " + "\n" + "12. Оборотень")
         if await add_role(len(game_sessions[ctx.channel.id].members), ctx) == True:
             return
@@ -1136,18 +1141,18 @@ async def create(ctx):
 async def pool(ctx):
     if type(ctx.channel) != discord.channel.DMChannel:
         if ctx.channel.id in list(game_sessions.keys()):
-            await ctx.send("1. Мирных жителей: " + str(game_sessions[ctx.channel.id].roles_num['1']) + "\n" + 
-                           "2. Мафий: " + str(game_sessions[ctx.channel.id].roles_num['2']) + "\n" + 
-                           "3. Донов мафии: " + str(game_sessions[ctx.channel.id].roles_num['3']) + "\n" + 
-                           "4. Комиссаров: " + str(game_sessions[ctx.channel.id].roles_num['4']) + "\n" + 
-                           "5. Докторов: " + str(game_sessions[ctx.channel.id].roles_num['5']) + "\n" + 
-                           "6. Маньяков: " + str(game_sessions[ctx.channel.id].roles_num['6']) + "\n" + 
-                           "7. Куртизанок: " + str(game_sessions[ctx.channel.id].roles_num['7']) + "\n" + 
-                           "8. Бессмертных: " + str(game_sessions[ctx.channel.id].roles_num['8']) + "\n" + 
-                           "9. Двуликих: " + str(game_sessions[ctx.channel.id].roles_num['9']) + "\n" + 
-                           "10. Воров: " + str(game_sessions[ctx.channel.id].roles_num['10']) + "\n" + 
-                           "11. Сержантов: " + str(game_sessions[ctx.channel.id].roles_num['11']) + "\n" + 
-                           "12. Оборотней: " + str(game_sessions[ctx.channel.id].roles_num['12']) + "\n\n" + 
+            await ctx.send("1. Мирных жителей: " + str(game_sessions[ctx.channel.id].roles_num['1']) + "\n" +
+                           "2. Мафий: " + str(game_sessions[ctx.channel.id].roles_num['2']) + "\n" +
+                           "3. Донов мафии: " + str(game_sessions[ctx.channel.id].roles_num['3']) + "\n" +
+                           "4. Комиссаров: " + str(game_sessions[ctx.channel.id].roles_num['4']) + "\n" +
+                           "5. Докторов: " + str(game_sessions[ctx.channel.id].roles_num['5']) + "\n" +
+                           "6. Маньяков: " + str(game_sessions[ctx.channel.id].roles_num['6']) + "\n" +
+                           "7. Куртизанок: " + str(game_sessions[ctx.channel.id].roles_num['7']) + "\n" +
+                           "8. Бессмертных: " + str(game_sessions[ctx.channel.id].roles_num['8']) + "\n" +
+                           "9. Двуликих: " + str(game_sessions[ctx.channel.id].roles_num['9']) + "\n" +
+                           "10. Воров: " + str(game_sessions[ctx.channel.id].roles_num['10']) + "\n" +
+                           "11. Сержантов: " + str(game_sessions[ctx.channel.id].roles_num['11']) + "\n" +
+                           "12. Оборотней: " + str(game_sessions[ctx.channel.id].roles_num['12']) + "\n\n" +
                            "Оставшихся мест: " + str(len(game_sessions[ctx.channel.id].members) -
                                                      int(sum(list(game_sessions[ctx.channel.id].roles_num.values())))))
         else:
@@ -1213,7 +1218,6 @@ async def rename(ctx):
     except:
         await ctx.send('Необходимо сначала задать список ролей для игры.')
 
-
 @client.command()
 async def start(ctx, name=None):
     if ctx.channel.id not in list(game_sessions.keys()):
@@ -1222,7 +1226,7 @@ async def start(ctx, name=None):
         await ctx.send('В данном канале уже создается список или идет игра')
         return
     game_sessions[ctx.channel.id].game_settings = get_settings(ctx.author.id)
-    if name != None and name != 'cl' and name != 'ex':
+    if name != None and name != 'cl':
         new_set = load_set(ctx.author.id, name)
         game_sessions[ctx.channel.id].members = ctx.message.author.voice.channel.members
         if new_set == {}:
@@ -1234,8 +1238,6 @@ async def start(ctx, name=None):
             del new_set
     elif name == 'cl':
         await genclassic(ctx)
-    elif name == 'ex':
-        await genex(ctx)
     if type(ctx.channel) != discord.channel.DMChannel:
         for role in game_sessions[ctx.channel.id].roles_num.copy():
             if game_sessions[ctx.channel.id].roles_num[role] == 0:
@@ -1295,7 +1297,7 @@ async def on_message(mess):
             await meeting_day(mess)
         if mess.content == 'Наступает день 🌇':
             await day(mess)
-        if mess.content == 'Наступает ночь 🌃':
+        if mess.content == 'Наступает ночь 🌃 (Просьба игрокам с активными ролями перейти в личные сообщения с ботом)':
             await night(mess)
     elif mess.guild == None and mess.author != client.user:
         if mess.author in game_sessions[night_ids[mess.channel.id]].members and mess.content[0] != '!' and mess.author in game_sessions[night_ids[mess.channel.id]].right_to_chat:
