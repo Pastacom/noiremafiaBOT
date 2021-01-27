@@ -88,6 +88,11 @@ async def on_ready():
 #-----------------Utility commands------------------
 
 
+async def blank_message(number, ctx):
+    for i in range(number):
+        await ctx.send('_ _')
+
+
 async def unmute(mess, member):
     if game_sessions[mess.channel.id].game_settings['mute'] == 'on':
         try:
@@ -292,21 +297,25 @@ async def preparation_of_results(mode, message):
 
 async def win_condition(message):
     if game_sessions[message.channel.id].maniac > 0 and game_sessions[message.channel.id].red + game_sessions[message.channel.id].black + game_sessions[message.channel.id].two_faced == 0:
+        await blank_message(1, message.channel)
         await message.channel.send('Игра окончена! Победа маньяка 🔪')
         await preparation_of_results(1, message)
         await after_game(message)
         return True
     elif game_sessions[message.channel.id].maniac == 0 and ((game_sessions[message.channel.id].black >= game_sessions[message.channel.id].red and game_sessions[message.channel.id].black > 0) or (game_sessions[message.channel.id].red + game_sessions[message.channel.id].black == 0 and game_sessions[message.channel.id].two_faced > 0)):
+        await blank_message(1, message.channel)
         await message.channel.send('Игра окончена! Победа мафии 🕵️')
         await preparation_of_results(2, message)
         await after_game(message)
         return True
     elif game_sessions[message.channel.id].maniac == 0 and game_sessions[message.channel.id].black == 0 and game_sessions[message.channel.id].red > 0:
+        await blank_message(1, message.channel)
         await message.channel.send('Игра окончена! Победа мирного города 👥')
         await preparation_of_results(3, message)
         await after_game(message)
         return True
     elif game_sessions[message.channel.id].maniac + game_sessions[message.channel.id].black + game_sessions[message.channel.id].two_faced + game_sessions[message.channel.id].red == 0:
+        await blank_message(1, message.channel)
         await message.channel.send('Игра окончена! Ничья. В городе не осталось живых 💀')
         await preparation_of_results(4, message)
         await after_game(message)
@@ -413,10 +422,10 @@ async def on_reaction_add(reaction, user):
                 game_sessions[reaction.message.channel.id].count -= 1
                 if game_sessions[reaction.message.channel.id].count == 0:
                     await reaction.message.delete()
-                    for i in range(len(game_sessions[ctx.channel.id].members)):
+                    for i in range(len(game_sessions[reaction.message.channel.id].members)):
                         try:
-                            await game_sessions[ctx.channel.id].members[i].edit(
-                                nick=(str(i + 1) + '. ' + str(game_sessions[ctx.channel.id].members[i])[:-5]))
+                            await game_sessions[reaction.message.channel.id].members[i].edit(
+                                nick=(str(i + 1) + '. ' + str(game_sessions[reaction.message.channel.id].members[i])[:-5]))
                         except:
                             pass
                     await reaction.message.channel.send('Наступает ночь 🌃 (Просьба игрокам с активными ролями перейти в личные сообщения с ботом)')
@@ -424,7 +433,7 @@ async def on_reaction_add(reaction, user):
                     await reaction.message.remove_reaction('💤', user)
                     x = user.nick[0:2]
                     if x != user.name[0:2]:
-                        await user.edit(nick=x + user.name + '🛌')
+                        await user.edit(nick=x + user.name + '😴')
                     del x
         elif reaction.emoji == '⏰' and user != reaction.message.author and user in game_sessions[reaction.message.channel.id].members:
             if game_sessions[reaction.message.channel.id].already[game_sessions[reaction.message.channel.id].members.index(user)] == 0 and game_sessions[reaction.message.channel.id].player_status[user][0] != 0:
@@ -432,10 +441,10 @@ async def on_reaction_add(reaction, user):
                 game_sessions[reaction.message.channel.id].count -= 1
                 if game_sessions[reaction.message.channel.id].count == 0:
                     await reaction.message.delete()
-                    for i in range(len(game_sessions[ctx.channel.id].members)):
+                    for i in range(len(game_sessions[reaction.message.channel.id].members)):
                         try:
-                            await game_sessions[ctx.channel.id].members[i].edit(
-                                nick=(str(i + 1) + '. ' + str(game_sessions[ctx.channel.id].members[i])[:-5]))
+                            await game_sessions[reaction.message.channel.id].members[i].edit(
+                                nick=(str(i + 1) + '. ' + str(game_sessions[reaction.message.channel.id].members[i])[:-5]))
                         except:
                             pass
                     await reaction.message.channel.send('Наступает день 🌇')
@@ -443,7 +452,7 @@ async def on_reaction_add(reaction, user):
                     await reaction.message.remove_reaction('⏰', user)
                     x = user.nick[0:2]
                     if x != user.name[0:2]:
-                        await user.edit(nick=x + user.name + '🛏️')
+                        await user.edit(nick=x + user.name + '🙂')
                     del x
         elif reaction.emoji == '✅' and user != reaction.message.author and game_sessions[
             reaction.message.channel.id].vn == 5 and user in game_sessions[reaction.message.channel.id].members:
@@ -456,6 +465,7 @@ async def on_reaction_add(reaction, user):
             if sum(list(game_sessions[reaction.message.channel.id].already.values())) == len(game_sessions[reaction.message.channel.id].members):
                 await reaction.message.delete()
                 await user_rename(reaction.message)
+                await blank_message(1, reaction.message.channel)
                 await reaction.message.channel.send('💠 **ИГРА НАЧАЛАСЬ** 💠')
                 game_sessions[reaction.message.channel.id].running = True
             else:
@@ -560,11 +570,6 @@ async def s(ctx, name=None):
 
 
 @client.command()
-async def p(ctx):
-    await pool(ctx)
-
-
-@client.command()
 async def r(ctx):
     await reset(ctx)
 
@@ -614,10 +619,10 @@ async def meeting_day(mess):
     game_sessions[mess.channel.id].already = [0 for i in range(len(game_sessions[mess.channel.id].members))]
     ms = await mess.channel.send('Город засыпает 💤 (Выключите камеру и после этого нажмите 💤, чтобы подтвердить готовность к ночи)')
     await ms.add_reaction('💤')
-    for i in range(len(game_sessions[ctx.channel.id].members)):
+    for i in range(len(game_sessions[mess.channel.id].members)):
         try:
-            await game_sessions[ctx.channel.id].members[i].edit(
-                nick=(str(i + 1) + '. ' + str(game_sessions[ctx.channel.id].members[i])[:-5]) + ' 🛏️')
+            await game_sessions[mess.channel.id].members[i].edit(
+                nick=(str(i + 1) + '. ' + str(game_sessions[mess.channel.id].members[i])[:-5]) + ' 🙂')
         except:
             pass
     game_sessions[mess.channel.id].count = 0
@@ -674,10 +679,10 @@ async def day(mess):
         game_sessions[mess.channel.id].already = [0 for i in range(len(game_sessions[mess.channel.id].members))]
         ms = await mess.channel.send('Город засыпает 💤 (Выключите камеру и после этого нажмите 💤, чтобы подтвердить готовность к ночи)')
         await ms.add_reaction('💤')
-        for i in range(len(game_sessions[ctx.channel.id].members)):
+        for i in range(len(game_sessions[mess.channel.id].members)):
             try:
-                await game_sessions[ctx.channel.id].members[i].edit(
-                    nick=(str(i + 1) + '. ' + str(game_sessions[ctx.channel.id].members[i])[:-5]) + ' 🛏️')
+                await game_sessions[mess.channel.id].members[i].edit(
+                    nick=(str(i + 1) + '. ' + str(game_sessions[mess.channel.id].members[i])[:-5]) + ' 🙂')
             except:
                 pass
         game_sessions[mess.channel.id].count = 0
@@ -831,10 +836,10 @@ async def day(mess):
         game_sessions[mess.channel.id].already = [0 for i in range(len(game_sessions[mess.channel.id].members))]
         ms = await mess.channel.send('Город засыпает 💤 (Выключите камеру и после этого нажмите 💤, чтобы подтвердить готовность к ночи)')
         await ms.add_reaction('💤')
-        for i in range(len(game_sessions[ctx.channel.id].members)):
+        for i in range(len(game_sessions[mess.channel.id].members)):
             try:
-                await game_sessions[ctx.channel.id].members[i].edit(
-                    nick=(str(i + 1) + '. ' + str(game_sessions[ctx.channel.id].members[i])[:-5]) + ' 🛏️')
+                await game_sessions[mess.channel.id].members[i].edit(
+                    nick=(str(i + 1) + '. ' + str(game_sessions[mess.channel.id].members[i])[:-5]) + ' 🙂')
             except:
                 pass
         game_sessions[mess.channel.id].count = 0
@@ -979,10 +984,10 @@ async def night(mess):
     game_sessions[mess.channel.id].already = [0 for i in range(len(game_sessions[mess.channel.id].members))]
     ms = await mess.channel.send('Город просыпается ⏰ (Включите камеру и после этого нажмите ⏰, чтобы подтвердить готовность ко дню)')
     await ms.add_reaction('⏰')
-    for i in range(len(game_sessions[ctx.channel.id].members)):
+    for i in range(len(game_sessions[mess.channel.id].members)):
         try:
-            await game_sessions[ctx.channel.id].members[i].edit(
-                nick=(str(i + 1) + '. ' + str(game_sessions[ctx.channel.id].members[i])[:-5]) + ' 🛌')
+            await game_sessions[mess.channel.id].members[i].edit(
+                nick=(str(i + 1) + '. ' + str(game_sessions[mess.channel.id].members[i])[:-5]) + ' 😴')
         except:
             pass
     game_sessions[mess.channel.id].right_to_act.clear()
@@ -994,7 +999,6 @@ async def night(mess):
     if game_sessions[mess.channel.id].count == 0:
         await ms.delete()
         await mess.channel.send('Наступает день 🌇')
-
 
 async def genclassic(ctx):
     if type(ctx.channel) != discord.channel.DMChannel:
@@ -1115,6 +1119,7 @@ async def add_role(num, ctx, message):
                 await ctx.send('Количество ролей превышает количество игроков. Попробуйте снова.')
                 if await add_role(num, ctx, message) == True:
                     return True
+        await pool(ctx, message)
     except:
         if await add_role(num, ctx, message) == True:
             return True
@@ -1164,19 +1169,24 @@ async def create(ctx):
                                                          int(sum(list(game_sessions[ctx.channel.id].roles_num.values())))))
         if await add_role(len(game_sessions[ctx.channel.id].members), ctx, message) == True:
             return
-        await ctx.send("Начало игры. Роли игроков в игре:" + "\n\n" +
-                       "Мирных жителей: " + str(game_sessions[ctx.channel.id].roles_num['1']) + "\n" +
-                       "Мафий: " + str(game_sessions[ctx.channel.id].roles_num['2']) + "\n" +
-                       "Донов мафии: " + str(game_sessions[ctx.channel.id].roles_num['3']) + "\n" +
-                       "Комиссаров: " + str(game_sessions[ctx.channel.id].roles_num['4']) + "\n" +
-                       "Докторов: " + str(game_sessions[ctx.channel.id].roles_num['5']) + "\n" +
-                       "Маньяков: " + str(game_sessions[ctx.channel.id].roles_num['6']) + "\n" +
-                       "Куртизанок: " + str(game_sessions[ctx.channel.id].roles_num['7']) + "\n" +
-                       "Бессмертных: " + str(game_sessions[ctx.channel.id].roles_num['8']) + "\n" +
-                       "Двуликих: " + str(game_sessions[ctx.channel.id].roles_num['9']) + "\n" +
-                       "Воров: " + str(game_sessions[ctx.channel.id].roles_num['10']) + "\n" +
-                       "Сержантов: " + str(game_sessions[ctx.channel.id].roles_num['11']) + "\n" +
-                       "Оборотней: " + str(game_sessions[ctx.channel.id].roles_num['12']))
+        x = "Начало игры. Роли игроков в игре:\n\n"
+        rl = ["Мирных жителей: " + str(game_sessions[ctx.channel.id].roles_num['1']) + "\n",
+              "Мафий: " + str(game_sessions[ctx.channel.id].roles_num['2']) + "\n",
+              "Донов мафии: " + str(game_sessions[ctx.channel.id].roles_num['3']) + "\n",
+              "Комиссаров: " + str(game_sessions[ctx.channel.id].roles_num['4']) + "\n",
+              "Докторов: " + str(game_sessions[ctx.channel.id].roles_num['5']) + "\n",
+              "Маньяков: " + str(game_sessions[ctx.channel.id].roles_num['6']) + "\n",
+              "Куртизанок: " + str(game_sessions[ctx.channel.id].roles_num['7']) + "\n",
+              "Бессмертных: " + str(game_sessions[ctx.channel.id].roles_num['8']) + "\n",
+              "Двуликих: " + str(game_sessions[ctx.channel.id].roles_num['9']) + "\n",
+              "Воров: " + str(game_sessions[ctx.channel.id].roles_num['10']) + "\n",
+              "Сержантов: " + str(game_sessions[ctx.channel.id].roles_num['11']) + "\n",
+              "Оборотней: " + str(game_sessions[ctx.channel.id].roles_num['12'])]
+        for i in range(1, 13):
+            if game_sessions[ctx.channel.id].roles_num[str(i)] != 0:
+                x += rl[i - 1]
+        await ctx.send(x)
+        await blank_message(1, ctx.channel)
     elif game_sessions[ctx.channel.id].game_settings['mode'] == 'auto' and type(ctx.channel) != discord.channel.DMChannel:
         game_sessions[ctx.channel.id].roles_num = roles_num_b.copy()
         game_sessions[ctx.channel.id].members = ctx.message.author.voice.channel.members
@@ -1201,27 +1211,31 @@ async def create(ctx):
                                                                game_sessions[ctx.channel.id].roles_num.values())))))
         if await add_role(len(game_sessions[ctx.channel.id].members), ctx, message) == True:
             return
-        await ctx.send("Начало игры. Роли игроков в игре:" + "\n\n" +
-                       "Мирных жителей: " + str(game_sessions[ctx.channel.id].roles_num['1']) + "\n" +
-                       "Мафий: " + str(game_sessions[ctx.channel.id].roles_num['2']) + "\n" +
-                       "Донов мафии: " + str(game_sessions[ctx.channel.id].roles_num['3']) + "\n" +
-                       "Комиссаров: " + str(game_sessions[ctx.channel.id].roles_num['4']) + "\n" +
-                       "Докторов: " + str(game_sessions[ctx.channel.id].roles_num['5']) + "\n" +
-                       "Маньяков: " + str(game_sessions[ctx.channel.id].roles_num['6']) + "\n" +
-                       "Куртизанок: " + str(game_sessions[ctx.channel.id].roles_num['7']) + "\n" +
-                       "Бессмертных: " + str(game_sessions[ctx.channel.id].roles_num['8']) + "\n" +
-                       "Двуликих: " + str(game_sessions[ctx.channel.id].roles_num['9']) + "\n" +
-                       "Воров: " + str(game_sessions[ctx.channel.id].roles_num['10']) + "\n" +
-                       "Сержантов: " + str(game_sessions[ctx.channel.id].roles_num['11']) + "\n" +
-                       "Оборотней: " + str(game_sessions[ctx.channel.id].roles_num['12']))
+        x = "Начало игры. Роли игроков в игре:\n\n"
+        rl = ["Мирных жителей: " + str(game_sessions[ctx.channel.id].roles_num['1']) + "\n",
+              "Мафий: " + str(game_sessions[ctx.channel.id].roles_num['2']) + "\n",
+              "Донов мафии: " + str(game_sessions[ctx.channel.id].roles_num['3']) + "\n",
+              "Комиссаров: " + str(game_sessions[ctx.channel.id].roles_num['4']) + "\n",
+              "Докторов: " + str(game_sessions[ctx.channel.id].roles_num['5']) + "\n",
+              "Маньяков: " + str(game_sessions[ctx.channel.id].roles_num['6']) + "\n",
+              "Куртизанок: " + str(game_sessions[ctx.channel.id].roles_num['7']) + "\n",
+              "Бессмертных: " + str(game_sessions[ctx.channel.id].roles_num['8']) + "\n",
+              "Двуликих: " + str(game_sessions[ctx.channel.id].roles_num['9']) + "\n",
+              "Воров: " + str(game_sessions[ctx.channel.id].roles_num['10']) + "\n",
+              "Сержантов: " + str(game_sessions[ctx.channel.id].roles_num['11']) + "\n",
+              "Оборотней: " + str(game_sessions[ctx.channel.id].roles_num['12'])]
+        for i in range(1, 13):
+            if game_sessions[ctx.channel.id].roles_num[str(i)] != 0:
+                x += rl[i - 1]
+        await ctx.send(x)
+        await blank_message(1, ctx.channel)
         await game_initialize(ctx)
 
 
-@client.command()
 async def pool(ctx, message):
     if type(ctx.channel) != discord.channel.DMChannel:
         if ctx.channel.id in list(game_sessions.keys()):
-                await message.edit(content = "1. Мирных жителей: " + str(game_sessions[ctx.channel.id].roles_num['1']) + "\n" +
+                await message.edit(content="1. Мирных жителей: " + str(game_sessions[ctx.channel.id].roles_num['1']) + "\n" +
                                "2. Мафий: " + str(game_sessions[ctx.channel.id].roles_num['2']) + "\n" +
                                "3. Донов мафии: " + str(game_sessions[ctx.channel.id].roles_num['3']) + "\n" +
                                "4. Комиссаров: " + str(game_sessions[ctx.channel.id].roles_num['4']) + "\n" +
@@ -1296,7 +1310,7 @@ async def user_rename(ctx):
         for i in list(game_sessions[ctx.channel.id].player_roles.keys()):
             await status_maker(i, ctx)
     except:
-        await ctx.send('Необходимо сначала задать список ролей для игры.')
+        await ctx.channel.send('Необходимо сначала задать список ролей для игры.')
 
 
 async def game_initialize(ctx):
@@ -1347,7 +1361,7 @@ async def game_initialize(ctx):
                     except:
                         pass
                 game_sessions[ctx.channel.id].vn = 5
-                await ctx.send('Описания ролей были отправлены всем в личные сообщения')
+                await ctx.send('Описания ролей были отправлены всем в личные сообщения\n\n')
                 message = await ctx.send('Подтвердите свою готовность к игре (Нажмите ✅, чтобы подтвердить готовность, нажмите ❌, чтобы отменить готовность)')
                 await message.add_reaction('✅')
                 await message.add_reaction('❌')
