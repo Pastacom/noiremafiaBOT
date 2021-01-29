@@ -83,9 +83,60 @@ class Settings:
 @client.event
 async def on_ready():
     print("Bot is online.")
-    await client.change_presence(status=discord.Status.online, activity= discord.Activity(type=discord.ActivityType.watching, name="The Godfather"))
+    await client.change_presence(status=discord.Status.online, activity=discord.Activity(type=discord.ActivityType.watching, name="The Godfather"))
+    counter = 0
+    my_max = 0
+    guild = client.get_guild(713353831706263573)
+    for chan in guild.channels:
+        if type(chan) == discord.channel.CategoryChannel and 'Игровая' in chan.name:
+            counter += 1
+    for i in range(len(guild.roles)):
+        role = guild.roles[i]
+        if role.name[0:10] == 'game_room_':
+            if my_max < int(role.name[-1]):
+                my_max = int(role.name[-1])
+    for i in range(my_max+1, counter+1):
+        role = await guild.create_role(name='game_room_'+str(i), colour=discord.Colour(0xFF0000))
+        for cat in guild.channels:
+            if type(cat) == discord.channel.CategoryChannel and 'Игровая' in cat.name:
+                if int(cat.name[cat.name.find('(')-2]) == i:
+                    await cat.set_permissions(role, connect=True, add_reactions=True, read_messages=True,
+                                              send_messages=True, speak=True, stream=True, view_channel=True,
+                                              use_voice_activation=True)
+
 
 #-----------------Utility commands------------------
+
+
+@client.event
+async def on_voice_state_update(user, before, after):
+    if after.channel != None:
+        if after.channel.id == 804735640859705404:
+            for chan in after.channel.guild.channels:
+                if type(chan) == discord.channel.VoiceChannel:
+                    if chan.user_limit == 10 and len(chan.members) < 10:
+                        for role in after.channel.guild.roles:
+                            if role.name == 'game_room_'+chan.name[-1]:
+                                await user.add_roles(role)
+                                await user.move_to(chan)
+                                break
+                        break
+        elif after.channel.id == 713363182135279640:
+            for chan in after.channel.guild.channels:
+                if type(chan) == discord.channel.VoiceChannel:
+                    if chan.user_limit > 10 and len(chan.members) < 20:
+                        for role in after.channel.guild.roles:
+                            if role.name == 'game_room_' + chan.name[-1]:
+                                await user.add_roles(role)
+                                await user.move_to(chan)
+                                break
+                        break
+    if before.channel != None:
+        if 'Комната' in before.channel.name:
+            for role in before.channel.guild.roles:
+                if role.name == 'game_room_' + before.channel.name[-1]:
+                    await user.remove_roles(role)
+                    break
 
 
 async def blank_message(number, ctx):
@@ -272,9 +323,13 @@ async def after_game(mess):
 
 
 async def preparation_of_results(mode, message):
-    if game_sessions[message.channel.id].game_mode == 'custom':
-        return
-    for member in game_sessions[message.channel.id].player_status:
+    if message.channel.guild.id == 713353831706263573:
+        if 'Комната' in message.channel.name:
+            for role in message.channel.guild.roles:
+                if role.name == 'game_room_' + message.channel.name[-1]:
+                    break
+        for member in game_sessions[message.channel.id].player_status:
+            await member.remove_roles(role)
         if mode == 1:
             if game_sessions[message.channel.id].player_roles[member] == '6':
                 game_sessions[message.channel.id].gamers[str(member.id)] = [1, roles_multiplier[int(game_sessions[message.channel.id].player_roles[member])-1], game_sessions[message.channel.id].player_status[member][0], roles_definition[int(game_sessions[message.channel.id].player_roles[member])]]
@@ -292,7 +347,7 @@ async def preparation_of_results(mode, message):
                 game_sessions[message.channel.id].gamers[str(member.id)] = [0, roles_multiplier[int(game_sessions[message.channel.id].player_roles[member]) - 1], game_sessions[message.channel.id].player_status[member][0], roles_definition[int(game_sessions[message.channel.id].player_roles[member])]]
         else:
             game_sessions[message.channel.id].gamers[str(member.id)] = [0, roles_multiplier[int(game_sessions[message.channel.id].player_roles[member]) - 1], game_sessions[message.channel.id].player_status[member][0], roles_definition[int(game_sessions[message.channel.id].player_roles[member])]]
-    endgame(game_sessions[message.channel.id].gamers)
+    endgame(game_sessions[message.channel.id].gamers, game_sessions[message.channel.id].game_mode)
 
 
 async def win_condition(message):
@@ -1084,6 +1139,15 @@ async def reset(ctx):
     if ctx.channel.id in list(game_sessions.keys()):
         if game_sessions[ctx.channel.id].running == True:
             return
+        try:
+            await game_sessions[ctx.channel.id].context.delete()
+        except:
+            pass
+        for member in game_sessions[ctx.channel.id].members:
+            try:
+                await member.edit(nick=member.name)
+            except:
+                pass
         del game_sessions[ctx.channel.id]
         await ctx.send('Список обнулен')
     else:
@@ -1363,16 +1427,17 @@ async def game_initialize(ctx):
                 game_sessions[ctx.channel.id].vn = 5
                 await ctx.send('Описания ролей были отправлены всем в личные сообщения\n\n')
                 message = await ctx.send('Подтвердите свою готовность к игре (Нажмите ✅, чтобы подтвердить готовность, нажмите ❌, чтобы отменить готовность)')
+                game_sessions[ctx.channel.id].context = message
                 await message.add_reaction('✅')
                 await message.add_reaction('❌')
 
 
 @client.command()
 async def start(ctx, name=None):
-    if ctx.channel.id in list(game_sessions.keys()) and name != None:
+    if ctx.channel.id in list(game_sessions.keys()):
         await ctx.send('В данном канале уже создается список или идет игра')
         return
-    if name != None:
+    if ctx.channel.id not in list(game_sessions.keys()) and name != None:
         new_set = load_set(ctx.author.id, name)
         game_sessions[ctx.channel.id].members = ctx.message.author.voice.channel.members
         if new_set == {}:
@@ -1387,13 +1452,23 @@ async def start(ctx, name=None):
             await game_initialize(ctx)
     elif ctx.channel.id not in list(game_sessions.keys()):
         game_sessions[ctx.channel.id] = Game()
-        message = await ctx.channel.send(
-            'Выберите режим игры и нажмите кнопку для выбора режима. 1 - классика, 2 - свободный')
-        await message.add_reaction('1️⃣')
-        await message.add_reaction('2️⃣')
-        game_sessions[ctx.channel.id].vn = 6
-        game_sessions[ctx.channel.id].right = ctx.author
-        game_sessions[ctx.channel.id].context = ctx
+        if ctx.channel.guild.id != 713353831706263573:
+            message = await ctx.channel.send(
+                'Выберите режим игры и нажмите кнопку для выбора режима. 1 - классика, 2 - свободный')
+            await message.add_reaction('1️⃣')
+            await message.add_reaction('2️⃣')
+            game_sessions[ctx.channel.id].vn = 6
+            game_sessions[ctx.channel.id].right = ctx.author
+            game_sessions[ctx.channel.id].context = ctx
+        else:
+            if ctx.author.voice.channel.user_limit == 10:
+                game_sessions[ctx.channel.id].game_settings = {'mode': 'auto', 'mute': 'on',
+                                                               'time': [60, 45, 15, 60, 40, 90]}
+                await genclassic(ctx)
+            else:
+                game_sessions[ctx.channel.id].game_mode = 'custom'
+                game_sessions[ctx.message.channel.id].game_settings = get_settings(ctx.author.id)
+                await create(ctx)
 
 
 @client.event
