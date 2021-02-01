@@ -1215,35 +1215,36 @@ async def reset(ctx):
 
 
 async def add_role(num, ctx, message):
-    await pool(ctx, message)
     def check(m):
         return m.author.id == ctx.author.id and m.channel == ctx.channel
     response = await ctx.bot.wait_for('message', check=check)
     try:
         request = response.content
-        if request == '!reset':
+        if request == '!reset' or request == '!r':
             return True
         if int(request[:request.find(' ')]) not in [1, 2]:
             if game_sessions[ctx.channel.id].roles_num[request[:request.find(' ')]]+int(request[request.find(' ')+1:]) > 1:
                 await ctx.send('Такой персонаж может быть только один')
+                await pool(ctx, message)
                 if await add_role(num, ctx, message) == True:
                     return True
             else:
                 game_sessions[ctx.channel.id].roles_num[request[:request.find(' ')]] += int(request[request.find(' ')+1:])
                 if num - int(request[request.find(' ') + 1:]) > 0:
+                    await pool(ctx, message)
                     if await add_role(num - int(request[request.find(' ') + 1:]), ctx, message) == True:
                         return True
         else:
             if int(request[request.find(' ')+1:]) <= num:
                 game_sessions[ctx.channel.id].roles_num[request[:request.find(' ')]] += int(request[request.find(' ')+1:])
                 if num - int(request[request.find(' ') + 1:]) > 0:
+                    await pool(ctx, message)
                     if await add_role(num - int(request[request.find(' ') + 1:]), ctx, message) == True:
                         return True
             else:
                 await ctx.send('Количество ролей превышает количество игроков. Попробуйте снова.')
                 if await add_role(num, ctx, message) == True:
                     return True
-        await pool(ctx, message)
     except:
         if await add_role(num, ctx, message) == True:
             return True
@@ -1293,6 +1294,8 @@ async def create(ctx):
                                                          int(sum(list(game_sessions[ctx.channel.id].roles_num.values())))))
         if await add_role(len(game_sessions[ctx.channel.id].members), ctx, message) == True:
             return
+        else:
+            await pool(ctx, message)
         x = "Начало игры. Роли игроков в игре:\n\n"
         rl = ["Мирных жителей: " + str(game_sessions[ctx.channel.id].roles_num['1']) + "\n",
               "Мафий: " + str(game_sessions[ctx.channel.id].roles_num['2']) + "\n",
@@ -1337,6 +1340,8 @@ async def create(ctx):
                                                                game_sessions[ctx.channel.id].roles_num.values())))))
         if await add_role(len(game_sessions[ctx.channel.id].members), ctx, message) == True:
             return
+        else:
+            await pool(ctx, message)
         x = "Начало игры. Роли игроков в игре:\n\n"
         rl = ["Мирных жителей: " + str(game_sessions[ctx.channel.id].roles_num['1']) + "\n",
               "Мафий: " + str(game_sessions[ctx.channel.id].roles_num['2']) + "\n",
@@ -1554,5 +1559,5 @@ async def on_message(mess):
 
 #---------------------Token-------------------------
 
-token = 'NzEzMzczNTg4ODYxODc4MzQz.XsfK7Q.JcgpgGPcxIyU-M2ii-4vmLx6ARY'
+token = 'NzEzMzczNTg4ODYxODc4MzQz.XsfK7Q.oBd3xFUlfOAZWRurlAYtoVOD7Q0'
 client.run(token)
