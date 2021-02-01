@@ -1,6 +1,6 @@
 # -*- coding: utf8 -*-!
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import asyncio
 import random
 import time as tm
@@ -11,6 +11,8 @@ client.remove_command("help")
 
 game_sessions = {}
 setting_sessions = {}
+classic_query = []
+custom_query = []
 night_ids = {}
 roles_num_b = {'1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 0, '8': 0, '9': 0, '10': 0, '11': 0, '12': 0}
 roles_multiplier = [1.4, 1.5, 1.75, 1.75, 1.6, 2, 1.4, 1, 1.8, 1.2, 1.6, 1.5]
@@ -69,6 +71,8 @@ class Game:
         self.running = False
         self.game_mode = 'classic'
         self.context = None
+        self.limit = 10
+        self.roles_num_save = {}
 
 
 class Settings:
@@ -90,6 +94,7 @@ async def on_ready():
     for chan in guild.channels:
         if type(chan) == discord.channel.CategoryChannel and 'Игровая' in chan.name:
             counter += 1
+    await query_distribution(guild)
     for i in range(len(guild.roles)):
         role = guild.roles[i]
         if role.name[0:10] == 'game_room_':
@@ -102,41 +107,86 @@ async def on_ready():
                 if int(cat.name[cat.name.find('(')-2]) == i:
                     await cat.set_permissions(role, connect=True, add_reactions=True, read_messages=True,
                                               send_messages=True, speak=True, stream=True, view_channel=True,
-                                              use_voice_activation=True)
+                                              use_voice_activation=True, read_message_history=True)
 
 
 #-----------------Utility commands------------------
 
 
-@client.event
-async def on_voice_state_update(user, before, after):
-    if after.channel != None:
-        if after.channel.id == 804735640859705404:
-            for chan in after.channel.guild.channels:
+async def clear_channel(channel):
+    for text_chan in channel.category.channels:
+        if type(text_chan) == discord.channel.TextChannel:
+            chan_name = text_chan.name
+            for chill in channel.guild.channels:
+                if chill.id == 805081558428024892:
+                    chill_zone = chill
+                    break
+            for member in game_sessions[text_chan.id].members:
+                try:
+                    await member.move_to(chill_zone)
+                except:
+                    pass
+            await text_chan.delete()
+            await channel.category.create_text_channel(chan_name)
+
+
+async def query_distribution(guild):
+    while True:
+        await asyncio.sleep(10)
+        for user in classic_query:
+            for chan in guild.channels:
                 if type(chan) == discord.channel.VoiceChannel:
                     if chan.user_limit == 10 and len(chan.members) < 10:
-                        for role in after.channel.guild.roles:
-                            if role.name == 'game_room_'+chan.name[-1]:
-                                await user.add_roles(role)
-                                await user.move_to(chan)
-                                break
-                        break
-        elif after.channel.id == 713363182135279640:
-            for chan in after.channel.guild.channels:
-                if type(chan) == discord.channel.VoiceChannel:
-                    if chan.user_limit > 10 and len(chan.members) < 20:
-                        for role in after.channel.guild.roles:
+                        for role in guild.roles:
                             if role.name == 'game_room_' + chan.name[-1]:
                                 await user.add_roles(role)
                                 await user.move_to(chan)
                                 break
                         break
+        for user in custom_query:
+            for chan in guild.channels:
+                if type(chan) == discord.channel.VoiceChannel:
+                    if chan.user_limit > 10 and len(chan.members) < 20:
+                        for role in guild.roles:
+                            if role.name == 'game_room_' + chan.name[-1]:
+                                await user.add_roles(role)
+                                await user.move_to(chan)
+                                break
+                        break
+
+
+@client.event
+async def on_voice_state_update(user, before, after):
     if before.channel != None:
-        if 'Комната' in before.channel.name:
+        if 'Комната' in before.channel.name and after.channel != before.channel:
             for role in before.channel.guild.roles:
                 if role.name == 'game_room_' + before.channel.name[-1]:
                     await user.remove_roles(role)
                     break
+            if len(before.channel.members) == 0 and after.channel != before.channel:
+                for chan in before.channel.category.channels:
+                    if type(chan) == discord.channel.TextChannel:
+                        text_chan = chan
+                        if text_chan.id in list(game_sessions.keys()):
+                            try:
+                                await before.channel.edit(user_limit=game_sessions[text_chan.id].limit)
+                                await clear_channel(text_chan)
+                                del game_sessions[text_chan.id]
+                            except KeyError:
+                                pass
+        elif after.channel != before.channel:
+            if before.channel.id == 804735640859705404:
+                del classic_query[classic_query.index(user)]
+            elif before.channel.id == 713363182135279640:
+                del custom_query[custom_query.index(user)]
+    if after.channel != None:
+        if after.channel != before.channel:
+            await user.edit(mute=False)
+            if after.channel.id == 804735640859705404:
+                classic_query.append(user)
+            elif after.channel.id == 713363182135279640:
+                custom_query.append(user)
+
 
 
 async def blank_message(number, ctx):
@@ -158,6 +208,7 @@ async def mute(mess, member):
             await member.edit(mute=True)
         except:
             pass
+
 
 @client.command()
 async def help(ctx):
@@ -197,7 +248,7 @@ async def action(ctx, choice):
         else:
             choice -= 1
             if game_sessions[night_ids[ctx.channel.id]].player_roles[ctx.author] == '3' and game_sessions[night_ids[ctx.channel.id]].don_phase == 1:
-                None
+                pass
             else:
                 game_sessions[night_ids[ctx.channel.id]].player_status[ctx.author][5] = 1
             if game_sessions[night_ids[ctx.channel.id]].player_roles[ctx.author] == '10':
@@ -316,37 +367,46 @@ async def after_game(mess):
             x = 'Мирный житель'
         ft += str(i) + ') ' + str(member)[:-5] + '\n'
         sd += str(i) + ') ' + x + '\n'
-    emb = discord.Embed(title='Роли игроков:', colour= discord.Color.from_rgb(255, 150, 31))
+    emb = discord.Embed(title='Роли игроков:', colour=discord.Color.from_rgb(255, 150, 31))
     emb.add_field(name='Игрок', value=ft, inline=True)
     emb.add_field(name='Роль', value=sd, inline=True)
     await mess.channel.send(embed=emb)
 
 
+async def close_session(mess):
+    for member in game_sessions[mess.channel.id].members:
+        await unmute(mess, member)
+        try:
+            await member.edit(nick=member.name)
+        except:
+            pass
+    if mess.channel.guild.id == 713353831706263573:
+        await timer(60, mess, None, 4)
+        await clear_channel(game_sessions[mess.channel.id].context)
+        await game_sessions[mess.channel.id].context.edit(user_limit=game_sessions[mess.channel.id].limit)
+    del game_sessions[mess.channel.id]
+
+
 async def preparation_of_results(mode, message):
     if message.channel.guild.id == 713353831706263573:
-        if 'Комната' in message.channel.name:
-            for role in message.channel.guild.roles:
-                if role.name == 'game_room_' + message.channel.name[-1]:
-                    break
         for member in game_sessions[message.channel.id].player_status:
-            await member.remove_roles(role)
-        if mode == 1:
-            if game_sessions[message.channel.id].player_roles[member] == '6':
-                game_sessions[message.channel.id].gamers[str(member.id)] = [1, roles_multiplier[int(game_sessions[message.channel.id].player_roles[member])-1], game_sessions[message.channel.id].player_status[member][0], roles_definition[int(game_sessions[message.channel.id].player_roles[member])]]
+            if mode == 1:
+                if game_sessions[message.channel.id].player_roles[member] == '6':
+                    game_sessions[message.channel.id].gamers[str(member.id)] = [1, roles_multiplier[int(game_sessions[message.channel.id].player_roles[member])-1], game_sessions[message.channel.id].player_status[member][0], roles_definition[int(game_sessions[message.channel.id].player_roles[member])]]
+                else:
+                    game_sessions[message.channel.id].gamers[str(member.id)] = [0, roles_multiplier[int(game_sessions[message.channel.id].player_roles[member]) - 1], game_sessions[message.channel.id].player_status[member][0], roles_definition[int(game_sessions[message.channel.id].player_roles[member])]]
+            elif mode == 2:
+                if int(game_sessions[message.channel.id].player_roles[member]) in [2, 3, 9, 10, 12]:
+                    game_sessions[message.channel.id].gamers[str(member.id)] = [1, roles_multiplier[int(game_sessions[message.channel.id].player_roles[member])-1], game_sessions[message.channel.id].player_status[member][0], roles_definition[int(game_sessions[message.channel.id].player_roles[member])]]
+                else:
+                    game_sessions[message.channel.id].gamers[str(member.id)] = [0, roles_multiplier[int(game_sessions[message.channel.id].player_roles[member]) - 1], game_sessions[message.channel.id].player_status[member][0], roles_definition[int(game_sessions[message.channel.id].player_roles[member])]]
+            elif mode == 3:
+                if int(game_sessions[message.channel.id].player_roles[member]) in [1, 4, 5, 7, 8, 11]:
+                    game_sessions[message.channel.id].gamers[str(member.id)] = [1, roles_multiplier[int(game_sessions[message.channel.id].player_roles[member]) - 1], game_sessions[message.channel.id].player_status[member][0], roles_definition[int(game_sessions[message.channel.id].player_roles[member])]]
+                else:
+                    game_sessions[message.channel.id].gamers[str(member.id)] = [0, roles_multiplier[int(game_sessions[message.channel.id].player_roles[member]) - 1], game_sessions[message.channel.id].player_status[member][0], roles_definition[int(game_sessions[message.channel.id].player_roles[member])]]
             else:
                 game_sessions[message.channel.id].gamers[str(member.id)] = [0, roles_multiplier[int(game_sessions[message.channel.id].player_roles[member]) - 1], game_sessions[message.channel.id].player_status[member][0], roles_definition[int(game_sessions[message.channel.id].player_roles[member])]]
-        elif mode == 2:
-            if int(game_sessions[message.channel.id].player_roles[member]) in [2, 3, 9, 10, 12]:
-                game_sessions[message.channel.id].gamers[str(member.id)] = [1, roles_multiplier[int(game_sessions[message.channel.id].player_roles[member])-1], game_sessions[message.channel.id].player_status[member][0], roles_definition[int(game_sessions[message.channel.id].player_roles[member])]]
-            else:
-                game_sessions[message.channel.id].gamers[str(member.id)] = [0, roles_multiplier[int(game_sessions[message.channel.id].player_roles[member]) - 1], game_sessions[message.channel.id].player_status[member][0], roles_definition[int(game_sessions[message.channel.id].player_roles[member])]]
-        elif mode == 3:
-            if int(game_sessions[message.channel.id].player_roles[member]) in [1, 4, 5, 7, 8, 11]:
-                game_sessions[message.channel.id].gamers[str(member.id)] = [1, roles_multiplier[int(game_sessions[message.channel.id].player_roles[member]) - 1], game_sessions[message.channel.id].player_status[member][0], roles_definition[int(game_sessions[message.channel.id].player_roles[member])]]
-            else:
-                game_sessions[message.channel.id].gamers[str(member.id)] = [0, roles_multiplier[int(game_sessions[message.channel.id].player_roles[member]) - 1], game_sessions[message.channel.id].player_status[member][0], roles_definition[int(game_sessions[message.channel.id].player_roles[member])]]
-        else:
-            game_sessions[message.channel.id].gamers[str(member.id)] = [0, roles_multiplier[int(game_sessions[message.channel.id].player_roles[member]) - 1], game_sessions[message.channel.id].player_status[member][0], roles_definition[int(game_sessions[message.channel.id].player_roles[member])]]
     endgame(game_sessions[message.channel.id].gamers, game_sessions[message.channel.id].game_mode)
 
 
@@ -389,9 +449,9 @@ async def reduction_role_condition(i, mess):
     game_sessions[mess.channel.id].player_status[game_sessions[mess.channel.id].members[i]][0] = 0
 
 
-async def timer(time,mess,member,vt):
+async def timer(time, mess, member, vt):
     if vt == 0:
-        message = await mess.channel.send('Ваш ход ' + str(member)[:-5] + ' (Нажми ⛔, чтобы закончить свой ход)')
+        message = await mess.channel.send('Ваш ход ' + member.mention + ' (Нажми ⛔, чтобы закончить свой ход)')
         time_message = await mess.channel.send(str(time // 60) + ':' + str((time % 60) // 10) + str((time % 60) % 10))
         await time_message.add_reaction('⛔')
         for i in range(time - 1, -1, -1):
@@ -448,7 +508,15 @@ async def timer(time,mess,member,vt):
                 await i.delete()
             except:
                 pass
-
+    elif vt == 4:
+        time_message = await mess.channel.send('**Игра завершится через: ' + str(time // 60) + ':' + str((time % 60) // 10) + str((time % 60) % 10) + '**')
+        for i in range(time - 1, -1, -1):
+            await asyncio.sleep(1)
+            await time_message.edit(content='**Игра завершится через: ' + str(i // 60) + ':' + str((i % 60) // 10) + str((i % 60) % 10) + '**')
+        try:
+            await time_message.delete()
+        except:
+            pass
 
 @client.event
 async def on_reaction_add(reaction, user):
@@ -486,10 +554,13 @@ async def on_reaction_add(reaction, user):
                     await reaction.message.channel.send('Наступает ночь 🌃 (Просьба игрокам с активными ролями перейти в личные сообщения с ботом)')
                 else:
                     await reaction.message.remove_reaction('💤', user)
-                    x = user.nick[0:2]
-                    if x != user.name[0:2]:
-                        await user.edit(nick=x + user.name + '😴')
-                    del x
+                    try:
+                        x = user.nick[:user.nick.find('.')+2]
+                        if user.nick != user.name:
+                            await user.edit(nick=x + user.name + ' 😴')
+                        del x
+                    except:
+                        pass
         elif reaction.emoji == '⏰' and user != reaction.message.author and user in game_sessions[reaction.message.channel.id].members:
             if game_sessions[reaction.message.channel.id].already[game_sessions[reaction.message.channel.id].members.index(user)] == 0 and game_sessions[reaction.message.channel.id].player_status[user][0] != 0:
                 game_sessions[reaction.message.channel.id].already[game_sessions[reaction.message.channel.id].members.index(user)] = 1
@@ -505,10 +576,13 @@ async def on_reaction_add(reaction, user):
                     await reaction.message.channel.send('Наступает день 🌇')
                 else:
                     await reaction.message.remove_reaction('⏰', user)
-                    x = user.nick[0:2]
-                    if x != user.name[0:2]:
-                        await user.edit(nick=x + user.name + '🙂')
-                    del x
+                    try:
+                        x = user.nick[:user.nick.find('.')+2]
+                        if user.nick != user.name:
+                            await user.edit(nick=x + user.name + ' 🙂')
+                        del x
+                    except:
+                        pass
         elif reaction.emoji == '✅' and user != reaction.message.author and game_sessions[
             reaction.message.channel.id].vn == 5 and user in game_sessions[reaction.message.channel.id].members:
             game_sessions[reaction.message.channel.id].already[
@@ -518,9 +592,15 @@ async def on_reaction_add(reaction, user):
             except:
                 pass
             if sum(list(game_sessions[reaction.message.channel.id].already.values())) == len(game_sessions[reaction.message.channel.id].members):
-                await reaction.message.delete()
+                try:
+                    await reaction.message.delete()
+                except:
+                    pass
                 await user_rename(reaction.message)
                 await blank_message(1, reaction.message.channel)
+                if reaction.message.channel.guild.id == 713353831706263573:
+                    await user.voice.channel.edit(user_limit=len(game_sessions[reaction.message.channel.id].members))
+                game_sessions[reaction.message.channel.id].context = user.voice.channel
                 await reaction.message.channel.send('💠 **ИГРА НАЧАЛАСЬ** 💠')
                 game_sessions[reaction.message.channel.id].running = True
             else:
@@ -700,13 +780,7 @@ async def day(mess):
         except:
             pass
     if await win_condition(mess) == True:
-        for member in game_sessions[mess.channel.id].members:
-            await unmute(mess, member)
-            try:
-                await member.edit(nick=member.name)
-            except:
-                pass
-        del game_sessions[mess.channel.id]
+        await close_session(mess)
         return
     await mess.channel.send('Начинается обсуждение и выставление кандидатур на голосование 🗣️ (Напишите `!vote` *номер_игрока* в свой ход, чтобы выставить его на голосование)')
     game_sessions[mess.channel.id].voted = []
@@ -785,13 +859,7 @@ async def day(mess):
                 pass
             await mess.channel.send(str(game_sessions[mess.channel.id].members[game_sessions[mess.channel.id].guil])[:-5] + ' был посажен за решетку 👮')
             if await win_condition(mess) == True:
-                for member in game_sessions[mess.channel.id].members:
-                    await unmute(mess, member)
-                    try:
-                        await member.edit(nick=member.name)
-                    except:
-                        pass
-                del game_sessions[mess.channel.id]
+                await close_session(mess)
                 return
         else:
             for i in range(len(game_sessions[mess.channel.id].voted)):
@@ -839,13 +907,7 @@ async def day(mess):
                             await mess.channel.send(str(game_sessions[mess.channel.id].members[i])[:-5] + ' был посажен за решетку 👮')
                         break
                 if await win_condition(mess) == True:
-                    for member in game_sessions[mess.channel.id].members:
-                        await unmute(mess, member)
-                        try:
-                            await member.edit(nick=member.name)
-                        except:
-                            pass
-                    del game_sessions[mess.channel.id]
+                    await close_session(mess)
                     return
             else:
                 for i in list(game_sessions[mess.channel.id].guilty.keys()):
@@ -878,13 +940,7 @@ async def day(mess):
                             pass
                         await mess.channel.send(str(game_sessions[mess.channel.id].members[i])[:-5] + ' был посажен за решетку 👮')
                     if await win_condition(mess) == True:
-                        for member in game_sessions[mess.channel.id].members:
-                            await unmute(mess, member)
-                            try:
-                                await member.edit(nick=member.name)
-                            except:
-                                pass
-                        del game_sessions[mess.channel.id]
+                        await close_session(mess)
                         return
                 else:
                     await mess.channel.send('Было принято решение никого не сажать в тюрьму 🚫')
@@ -1061,13 +1117,15 @@ async def genclassic(ctx):
         game_sessions[ctx.channel.id].members = ctx.message.author.voice.channel.members
         amount = len(game_sessions[ctx.channel.id].members)
         if amount > 3 and amount < 11:
-                game_sessions[ctx.channel.id].roles_num['2'], game_sessions[ctx.channel.id].roles_num['3'], game_sessions[ctx.channel.id].roles_num['4'] = amount//3 - 1, 1, 1
-                game_sessions[ctx.channel.id].roles_num['1'] = amount - sum(list(game_sessions[ctx.channel.id].roles_num.values()))
-                await ctx.send("Начало игры. Роли игроков в игре:" + "\n\n" +
-                               "Мирных жителей: " + str(game_sessions[ctx.channel.id].roles_num['1']) + "\n" +
-                               "Мафий: " + str(game_sessions[ctx.channel.id].roles_num['2']) + "\n" +
-                               "Донов мафии: " + str(game_sessions[ctx.channel.id].roles_num['3']) + "\n" +
-                               "Комиссаров: " + str(game_sessions[ctx.channel.id].roles_num['4']))
+            if ctx.channel.guild.id == 713353831706263573:
+                await ctx.author.voice.channel.edit(user_limit=len(game_sessions[ctx.channel.id].members))
+            game_sessions[ctx.channel.id].roles_num['2'], game_sessions[ctx.channel.id].roles_num['3'], game_sessions[ctx.channel.id].roles_num['4'] = amount//3 - 1, 1, 1
+            game_sessions[ctx.channel.id].roles_num['1'] = amount - sum(list(game_sessions[ctx.channel.id].roles_num.values()))
+            await ctx.send("Начало игры. Роли игроков в игре:" + "\n\n" +
+                            "Мирных жителей: " + str(game_sessions[ctx.channel.id].roles_num['1']) + "\n" +
+                            "Мафий: " + str(game_sessions[ctx.channel.id].roles_num['2']) + "\n" +
+                            "Донов мафии: " + str(game_sessions[ctx.channel.id].roles_num['3']) + "\n" +
+                            "Комиссаров: " + str(game_sessions[ctx.channel.id].roles_num['4']))
         else:
             await ctx.send('Классический режим доступен для игры при команде от 3 до 10 игроков')
             del game_sessions[ctx.channel.id]
@@ -1148,6 +1206,8 @@ async def reset(ctx):
                 await member.edit(nick=member.name)
             except:
                 pass
+        if ctx.channel.guild.id == 713353831706263573:
+            await ctx.author.voice.channel.edit(user_limit=game_sessions[ctx.channel.id].limit)
         del game_sessions[ctx.channel.id]
         await ctx.send('Список обнулен')
     else:
@@ -1257,6 +1317,8 @@ async def create(ctx):
         for member in game_sessions[ctx.channel.id].members:
             if member.bot:
                 game_sessions[ctx.channel.id].members.remove(member)
+        if ctx.channel.guild.id == 713353831706263573:
+            await ctx.author.voice.channel.edit(user_limit=len(game_sessions[ctx.channel.id].members))
         await ctx.send("Задайте роли. Чтобы добавить роль в список напишите `номер_роли количество`, которое хотите добавить (Пример: комбинация 2 1 добавит одну мафию в список)")
         message = await ctx.send("1. Мирных жителей: " + str(game_sessions[ctx.channel.id].roles_num['1']) + "\n" +
                                  "2. Мафий: " + str(game_sessions[ctx.channel.id].roles_num['2']) + "\n" +
@@ -1321,11 +1383,11 @@ async def pool(ctx, message):
 async def save(ctx, name=None):
     if name != None:
         if ctx.channel.id in list(game_sessions.keys()):
-            if game_sessions[ctx.channel.id].roles_num != {}:
+            if game_sessions[ctx.channel.id].running == False:
                 x = get_all_sets(ctx.author.id)
                 if len(x) >= 5:
                     if name in list(x.keys()):
-                        save_set(ctx.author.id, name, game_sessions[ctx.channel.id].roles_num)
+                        save_set(ctx.author.id, name, game_sessions[ctx.channel.id].roles_num_save)
                         await ctx.send('Список под названием {} был перезаписан'.format(name))
                     else:
                         await ctx.send('Максимум можно сохранить 5 списков. Напишите название списка, который вы хотите заменить, или `!cancel` для отмены')
@@ -1339,10 +1401,10 @@ async def save(ctx, name=None):
                             await ctx.send('Отменено')
                             return
                         else:
-                            change_set(ctx.author.id, response.content, name, game_sessions[ctx.channel.id].roles_num)
+                            change_set(ctx.author.id, response.content, name, game_sessions[ctx.channel.id].roles_num_save)
                             await ctx.send('Список {} заменен на список под названием {}'.format(response.content, name))
                 else:
-                    save_set(ctx.author.id, name, game_sessions[ctx.channel.id].roles_num)
+                    save_set(ctx.author.id, name, game_sessions[ctx.channel.id].roles_num_save)
                     await ctx.send('Список сохранен под названием {}'.format(name))
             else:
                 await ctx.send('Сохранить список ролей можно только до начала игры')
@@ -1379,6 +1441,7 @@ async def user_rename(ctx):
 
 async def game_initialize(ctx):
     if type(ctx.channel) != discord.channel.DMChannel:
+        game_sessions[ctx.channel.id].roles_num_save = game_sessions[ctx.channel.id].roles_num.copy()
         for role in game_sessions[ctx.channel.id].roles_num.copy():
             if game_sessions[ctx.channel.id].roles_num[role] == 0:
                 if role in game_sessions[ctx.channel.id].roles_num:
@@ -1435,9 +1498,10 @@ async def game_initialize(ctx):
 @client.command()
 async def start(ctx, name=None):
     if ctx.channel.id in list(game_sessions.keys()):
-        await ctx.send('В данном канале уже создается список или идет игра')
+        await ctx.send('В данном канале уже создается список или идет игра. Чтобы создать новую напишите `!reset`')
         return
     if ctx.channel.id not in list(game_sessions.keys()) and name != None:
+        game_sessions[ctx.channel.id] = Game()
         new_set = load_set(ctx.author.id, name)
         game_sessions[ctx.channel.id].members = ctx.message.author.voice.channel.members
         if new_set == {}:
@@ -1461,14 +1525,17 @@ async def start(ctx, name=None):
             game_sessions[ctx.channel.id].right = ctx.author
             game_sessions[ctx.channel.id].context = ctx
         else:
-            if ctx.author.voice.channel.user_limit == 10:
-                game_sessions[ctx.channel.id].game_settings = {'mode': 'auto', 'mute': 'on',
-                                                               'time': [60, 45, 15, 60, 40, 90]}
-                await genclassic(ctx)
-            else:
-                game_sessions[ctx.channel.id].game_mode = 'custom'
-                game_sessions[ctx.message.channel.id].game_settings = get_settings(ctx.author.id)
-                await create(ctx)
+            if ctx.author.voice != None:
+                game_sessions[ctx.channel.id].limit = ctx.author.voice.channel.user_limit
+                if ctx.author.voice.channel.user_limit == 10:
+                    game_sessions[ctx.channel.id].game_settings = {'mode': 'auto', 'mute': 'on',
+                                                                   'time': [60, 45, 15, 60, 40, 90]}
+                    await genclassic(ctx)
+                else:
+                    game_sessions[ctx.channel.id].game_mode = 'custom'
+                    game_sessions[ctx.channel.id].limit = ctx.author.voice.channel.user_limit
+                    game_sessions[ctx.message.channel.id].game_settings = get_settings(ctx.author.id)
+                    await create(ctx)
 
 
 @client.event
@@ -1487,5 +1554,5 @@ async def on_message(mess):
 
 #---------------------Token-------------------------
 
-token = 'NzEzMzczNTg4ODYxODc4MzQz.XsfK7Q.IigCNgypVztyU5cOg_Bg2tgOYsI'
+token = 'NzEzMzczNTg4ODYxODc4MzQz.XsfK7Q.JcgpgGPcxIyU-M2ii-4vmLx6ARY'
 client.run(token)
