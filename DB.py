@@ -167,10 +167,12 @@ def get_all_sets(gamer):
         return user
 
 
-def endgame(gamers):
+def endgame(gamers, game_mode):
     a = create_connection('betkill.beget.tech', 'betkill_bd_auto', 'Ubuntu18.04', 'betkill_bd_auto')
     user_rp = []
     for gamer in list(gamers.keys()):
+        if game_mode == 'custom':
+            break
         select_users = "SELECT rp FROM users WHERE id_discord = %s"
         users = execute_read_query(a, select_users, (gamer,))
         if users == []:
@@ -194,9 +196,12 @@ def endgame(gamers):
          id_discord = %s
         """
         execute_query(a, update_post_description, (rating, gamer))
+    for gamer in list(gamers.keys()):
         if gamers[gamer][0] == 1:
             select_users = "SELECT win FROM users WHERE id_discord = %s"
             users = execute_read_query(a, select_users, (gamer,))
+            if users == []:
+                continue
             for user in users:
                 user = str(user)
                 user = int(user[1:user.find(',')])
